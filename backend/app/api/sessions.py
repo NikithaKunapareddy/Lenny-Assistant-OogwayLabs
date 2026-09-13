@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 from app.core.database import get_db
 from app.core.models_db import Session as DbSession, Message, Artifact
 from app.llm.factory import llm_manager
+from app.core.config import settings
 
 router = APIRouter(prefix="/sessions", tags=["Sessions"])
 
@@ -28,7 +29,7 @@ def create_session(req: CreateSessionRequest, db: Session = Depends(get_db)):
     new_session = DbSession(
         title=req.title or "New Strategy Chat",
         model_provider=provider,
-        model_name="llama3:latest" if provider == "ollama" else provider
+        model_name=settings.OLLAMA_MODEL if provider == "ollama" else provider
     )
     db.add(new_session)
     db.commit()

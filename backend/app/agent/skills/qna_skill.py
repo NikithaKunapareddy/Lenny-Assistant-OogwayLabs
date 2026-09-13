@@ -14,8 +14,8 @@ class QnASkill:
         conversation_history: Optional[List[Dict[str, str]]] = None,
         guest_filter: Optional[str] = None
     ) -> Dict[str, Any]:
-        # Search knowledge base
-        search_res = retriever.search(query, top_k=4, threshold=self.threshold, guest_filter=guest_filter)
+        # Search knowledge base (top_k=2 with concise context for fast CPU inference)
+        search_res = retriever.search(query, top_k=2, threshold=self.threshold, guest_filter=guest_filter)
 
         if not search_res["is_grounded"]:
             return {
@@ -30,7 +30,15 @@ class QnASkill:
                 "skill": "qna"
             }
 
-        context_str = retriever.format_sources_for_prompt(search_res["results"])
+        short_results = []
+        for r in search_res["results"][:2]:
+            r_copy = dict(r)
+            words = r_copy.get("content", "").split()
+            if len(words) > 180:
+                r_copy["content"] = " ".join(words[:180]) + "..."
+            short_results.append(r_copy)
+
+        context_str = retriever.format_sources_for_prompt(short_results)
 
         history_str = ""
         if conversation_history:
@@ -47,7 +55,11 @@ class QnASkill:
             f"Provide a clear, grounded answer citing specific guests and their insights:"
         )
 
-        response_text = llm.generate(prompt=prompt, system_prompt=GROUNDED_QNA_SYSTEM_PROMPT)
+        response_text = llm.generate(
+            prompt=prompt,
+            system_prompt=GROUNDED_QNA_SYSTEM_PROMPT,
+            max_tokens=600
+        )
 
         return {
             "content": response_text,

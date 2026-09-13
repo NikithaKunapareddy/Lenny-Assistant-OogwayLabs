@@ -111,7 +111,7 @@ export default function Sidebar({
               onChange={(e) => onSwitchModel(e.target.value)}
               className="w-full bg-slate-950 border border-slate-700/80 text-slate-200 text-xs rounded-xl px-2.5 py-2 focus:outline-none focus:border-purple-500 focus:ring-1 focus:ring-purple-500 font-medium"
             >
-              <option value="ollama">⚡ Ollama Local (llama3:latest)</option>
+              <option value="ollama">⚡ Ollama Local (llama3.2:3b)</option>
               <option value="anthropic">🧠 Anthropic Claude (Cloud)</option>
               <option value="openai">✨ OpenAI GPT-4o (Cloud)</option>
               <option value="mock">🛡️ Grounded Engine (Offline)</option>

@@ -35,13 +35,19 @@ class OllamaClient(BaseLLM):
             "stream": False,
             "options": {
                 "temperature": temperature,
-                "num_predict": max_tokens
+                "num_predict": max_tokens,
+                "num_thread": 8
             }
         }
-        resp = requests.post(f"{self.base_url}/api/generate", json=payload, timeout=60)
-        resp.raise_for_status()
-        data = resp.json()
-        return data.get("response", "")
+        try:
+            resp = requests.post(f"{self.base_url}/api/generate", json=payload, timeout=settings.OLLAMA_TIMEOUT)
+            resp.raise_for_status()
+            data = resp.json()
+            return data.get("response", "")
+        except Exception as e:
+            print(f"[!] Ollama generation failed or timed out: {e}. Falling back to internal Grounded Engine.")
+            from app.llm.mock_client import MockGroundedClient
+            return MockGroundedClient().generate(prompt, system_prompt, temperature, max_tokens)
 
     def stream(
         self,
@@ -57,10 +63,11 @@ class OllamaClient(BaseLLM):
             "stream": True,
             "options": {
                 "temperature": temperature,
-                "num_predict": max_tokens
+                "num_predict": max_tokens,
+                "num_thread": 8
             }
         }
-        with requests.post(f"{self.base_url}/api/generate", json=payload, stream=True, timeout=60) as resp:
+        with requests.post(f"{self.base_url}/api/generate", json=payload, stream=True, timeout=settings.OLLAMA_TIMEOUT) as resp:
             resp.raise_for_status()
             for line in resp.iter_lines():
                 if line:

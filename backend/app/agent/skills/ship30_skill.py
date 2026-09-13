@@ -25,13 +25,21 @@ class Ship30Skill:
         if not cleaned_query:
             cleaned_query = "product retention and growth frameworks"
 
-        search_res = retriever.search(cleaned_query, top_k=5, threshold=0.05)
-        context_str = retriever.format_sources_for_prompt(search_res["results"])
+        search_res = retriever.search(cleaned_query, top_k=2, threshold=0.05)
+        short_results = []
+        for r in search_res["results"][:2]:
+            r_copy = dict(r)
+            words = r_copy.get("content", "").split()
+            if len(words) > 200:
+                r_copy["content"] = " ".join(words[:200]) + "..."
+            short_results.append(r_copy)
+
+        context_str = retriever.format_sources_for_prompt(short_results)
 
         prompt = (
             f"Retrieved Transcript Passages from Lenny's Podcast:\n"
             f"{context_str}\n\n"
-            f"Assignment: Write a comprehensive, ~1,250-word Ship 30 for 30 style essay based strictly on the above knowledge.\n"
+            f"Assignment: Write a comprehensive, high-impact Ship 30 for 30 style essay based strictly on the above knowledge.\n"
             f"Topic / Prompt: {query}\n\n"
             f"Generate the complete essay following all Ship 30 for 30 principles:"
         )
@@ -40,7 +48,7 @@ class Ship30Skill:
             prompt=prompt,
             system_prompt=SHIP30_ESSAY_SYSTEM_PROMPT,
             temperature=0.7,
-            max_tokens=3000
+            max_tokens=700
         )
 
         return {

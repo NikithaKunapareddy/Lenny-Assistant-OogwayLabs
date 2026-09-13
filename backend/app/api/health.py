@@ -9,7 +9,6 @@ from app.core.config import settings
 router = APIRouter(tags=["Health"])
 
 @router.get("/health")
-@router.get("/api/health")
 def health_check(db: Session = Depends(get_db)):
     db_status = "connected"
     try:

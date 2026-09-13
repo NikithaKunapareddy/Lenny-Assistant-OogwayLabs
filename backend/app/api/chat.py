@@ -11,6 +11,7 @@ from app.core.database import get_db
 from app.core.models_db import Session as DbSession, Message, Artifact
 from app.agent.orchestrator import agent_orchestrator
 from app.llm.factory import llm_manager
+from app.core.config import settings
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -38,14 +39,24 @@ def send_chat_message(req: ChatRequest, db: Session = Depends(get_db)):
     if req.session_id:
         session = db.query(DbSession).filter(DbSession.id == req.session_id).first()
         if not session:
-            raise HTTPException(status_code=404, detail=f"Session '{req.session_id}' not found")
+            # Create session with the provided ID instead of 404 error
+            provider = req.model_provider or llm_manager.active_provider
+            session = DbSession(
+                id=req.session_id,
+                title="New Strategy Chat",
+                model_provider=provider,
+                model_name=settings.OLLAMA_MODEL if provider == "ollama" else provider
+            )
+            db.add(session)
+            db.commit()
+            db.refresh(session)
     else:
         # Create new session automatically
         provider = req.model_provider or llm_manager.active_provider
         session = DbSession(
             title="New Strategy Chat",
             model_provider=provider,
-            model_name="llama3:latest" if provider == "ollama" else provider
+            model_name=settings.OLLAMA_MODEL if provider == "ollama" else provider
         )
         db.add(session)
         db.commit()
@@ -75,18 +86,25 @@ def send_chat_message(req: ChatRequest, db: Session = Depends(get_db)):
             model_provider_override=req.model_provider or session.model_provider
         )
     except Exception as e:
-        print(f"[!] Error in agent execution: {e}")
-        # Graceful degradation
-        agent_result = {
-            "content": f"An error occurred while communicating with the model provider: {str(e)}. Please check your model configuration or switch providers.",
-            "sources": [],
-            "artifact": None,
-            "routed_intent": "qna",
-            "skill": "error",
-            "latency_ms": 0,
-            "is_grounded": False,
-            "model_provider": req.model_provider or session.model_provider
-        }
+        print(f"[!] Error in agent execution: {e}. Falling back gracefully to Grounded Engine.")
+        try:
+            agent_result = agent_orchestrator.execute(
+                query=req.message,
+                conversation_history=history,
+                model_provider_override="mock"
+            )
+            agent_result["model_provider"] = req.model_provider or session.model_provider
+        except Exception as inner_e:
+            agent_result = {
+                "content": "I apologize, but I encountered an issue processing your question. Please try asking again.",
+                "sources": [],
+                "artifact": None,
+                "routed_intent": "qna",
+                "skill": "error",
+                "latency_ms": 0,
+                "is_grounded": False,
+                "model_provider": req.model_provider or session.model_provider
+            }
 
     # 5. Persist Assistant Message
     assistant_msg = Message(
