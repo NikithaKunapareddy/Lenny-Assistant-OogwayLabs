@@ -22,51 +22,72 @@ Built to answer strategic product questions, generate **Ship 30 for 30** long-fo
 
 ## System Architecture
 
-```
-                    +------------------------------------+
-                    |       REACT 19 + VITE 8 FRONTEND   |
-                    |  - 3-Pane Responsive Layout        |
-                    |  - Model Provider Switcher Dropdown|
-                    |  - Sandboxed Artifact Viewer       |
-                    +-----------------+------------------+
-                                      |
-                           REST / SSE Streaming (/api)
-                                      |
-                                      v
-+---------------------------------------------------------------------------------+
-|                                FASTAPI BACKEND                                  |
-|                                                                                 |
-|  +--------------------+   +-----------------------+   +----------------------+  |
-|  |    API Routers     |   |   Agent Orchestrator  |   |   Model Config Layer |  |
-|  | - /api/chat        |   | - Regex Intent Router |   | - Ollama (llama3)    |  |
-|  | - /api/sessions    |   | - Token & Latency Log |   | - Anthropic Claude   |  |
-|  | - /api/artifacts   |   +-----------+-----------+   | - OpenAI GPT-4o      |  |
-|  | - /api/health      |               |               | - Fallback Engine    |  |
-|  +--------------------+               v               +----------------------+  |
-|                           +-----------------------+                             |
-|                           |      Skill Layer      |                             |
-|                           | - Grounded Q&A        |                             |
-|                           | - Ship 30 Essay       |                             |
-|                           | - HTML Artifacts      |                             |
-|                           +-----------+-----------+                             |
-|                                       |                                         |
-|                                       v                                         |
-|                           +-----------------------+                             |
-|                           | RAG Retrieval Engine  |                             |
-|                           | - 707 Dialogue Chunks |                             |
-|                           | - Domain Guardrail    |                             |
-|                           +-----------+-----------+                             |
-+---------------------------------------|-----------------------------------------+
-                                        |
-                 +----------------------+----------------------+
-                 |                                             |
-                 v                                             v
-  +-------------------------------+             +-------------------------------+
-  |      POSTGRESQL / SQLITE      |             |         OLLAMA ENGINE         |
-  |  - sessions table             |             |  - llama3:latest              |
-  |  - messages table             |             |  - http://localhost:11434     |
-  |  - artifacts table            |             +-------------------------------+
-  +-------------------------------+
+```mermaid
+graph TD
+    subgraph Client ["Client Presentation Layer (React 19 + Vite 8)"]
+        UI["Modern 3-Pane Interface"]
+        ModelSwitch["Model Toggle (Ollama / Claude / OpenAI)"]
+        Viewer["Sandboxed Artifact Viewer (iframe)"]
+        UI --- ModelSwitch
+        UI --- Viewer
+    end
+
+    Client -->|"REST / SSE Tokens (/api)"| FastAPI
+
+    subgraph Backend ["Backend Orchestration Layer (FastAPI)"]
+        FastAPI["FastAPI App Gateway"]
+        
+        subgraph Endpoints ["API Surface"]
+            E1["/api/chat (SSE Stream)"]
+            E2["/api/sessions (CRUD)"]
+            E3["/api/artifacts (Render)"]
+            E4["/api/models (Toggle)"]
+            E5["/api/health (Telemetry)"]
+        end
+        FastAPI --> Endpoints
+
+        Orchestrator["Agent Orchestrator (Intent Router)"]
+        Endpoints --> Orchestrator
+
+        subgraph Skills ["Specialized Agent Skills"]
+            S1["Grounded Q&A Skill<br/>(Verbatim Quotes & Footnotes)"]
+            S2["Ship 30 for 30 Skill<br/>(~1,250 words, 1-3-1 Hook)"]
+            S3["Artifact Generator Skill<br/>(Interactive HTML/CSS)"]
+        end
+        Orchestrator --> S1
+        Orchestrator --> S2
+        Orchestrator --> S3
+
+        subgraph RAG ["Grounded RAG Retrieval Engine"]
+            Guard["Domain Guardrail Lexicon"]
+            Retriever["Hybrid TF-IDF + Keyword Booster"]
+            KB[("707 Dialogue-Aware<br/>Podcast Chunks")]
+            Guard --> Retriever
+            KB --> Retriever
+        end
+        S1 --> RAG
+        S2 --> RAG
+        S3 --> RAG
+    end
+
+    subgraph Storage ["Persistence Layer (PostgreSQL / SQLite)"]
+        DB[("Database")]
+        T1["sessions (Chat Context)"]
+        T2["messages (Citations & Telemetry)"]
+        T3["artifacts (Versioned HTML/CSS)"]
+        DB --- T1
+        DB --- T2
+        DB --- T3
+    end
+    FastAPI <-->|"SQLAlchemy 2.0 (Pooler)"| Storage
+
+    subgraph LLM ["Pluggable LLM Providers"]
+        Ollama["Local: Ollama (llama3.2:3b / llama3)"]
+        Claude["Cloud: Anthropic Claude 3.5 Sonnet"]
+        OpenAI["Cloud: OpenAI GPT-4o"]
+        Fallback["Deterministic Grounded Engine"]
+    end
+    Orchestrator <--> LLM
 ```
 
 ---

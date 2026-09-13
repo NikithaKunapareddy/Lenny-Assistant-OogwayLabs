@@ -10,66 +10,72 @@
 
 The system is architected as a modular, three-tier full-stack application with clean separation of concerns between presentation, orchestration, retrieval, and persistent storage:
 
-```
-                            +-------------------------------------------+
-                            |                USER CLIENT                |
-                            |  React 19 + Vite 8 + Tailwind CSS 4       |
-                            +---------------------+---------------------+
-                                                  |
-                                      REST / SSE Streaming (/api)
-                                                  |
-                                                  v
-+---------------------------------------------------------------------------------------------------+
-|                                          FASTAPI BACKEND                                          |
-|                                                                                                   |
-|  +-----------------------+   +-----------------------+   +-------------------------------------+  |
-|  |     API Endpoints     |   |   Session Manager     |   |       Model Configuration Layer     |  |
-|  |  - /api/chat          |   |  - SQLAlchemy 2.0     |   |  - Local: Ollama (llama3:latest)    |  |
-|  |  - /api/sessions      |   |  - SQLite / Postgres  |   |  - Cloud: Anthropic Claude 3.5      |  |
-|  |  - /api/artifacts     |   |  - Message isolation  |   |  - Cloud: OpenAI GPT-4o             |  |
-|  |  - /api/models        |   |                       |   |  - Fallback: Grounded Engine        |  |
-|  |  - /api/health        |   |                       |   |                                     |  |
-|  +-----------+-----------+   +-----------+-----------+   +------------------+------------------+  |
-|              |                           |                                  |                     |
-|              +---------------------------+----------------------------------+                     |
-|                                          |                                                        |
-|                                          v                                                        |
-|                           +------------------------------+                                        |
-|                           |      AGENT ORCHESTRATOR      |                                        |
-|                           |  - Regex Intent Classifier   |                                        |
-|                           |  - Latency & Token Tracker   |                                        |
-|                           +--------------+---------------+                                        |
-|                                          |                                                        |
-|                     +--------------------+--------------------+                                   |
-|                     |                    |                    |                                   |
-|                     v                    v                    v                                   |
-|          +--------------------+ +--------------------+ +--------------------+                     |
-|          |    QnA Skill       | |   Ship 30 Skill    | |   Artifact Skill   |                     |
-|          | - Citations & quote| | - 1-3-1 Hook rule  | | - HTML/CSS Gen     |                     |
-|          | - Domain Guardrail | | - ~1,250 words     | | - Regex Sanitizer  |                     |
-|          +----------+---------+ +---------+----------+ +---------+----------+                     |
-|                     |                     |                      |                                |
-|                     +---------------------+----------------------+                                |
-|                                           |                                                       |
-|                                           v                                                       |
-|                           +------------------------------+                                        |
-|                           |     RAG RETRIEVAL ENGINE     |                                        |
-|                           |  - Hybrid Vector + TF-IDF    |                                        |
-|                           |  - Acronym & Guest Boosting  |                                        |
-|                           |  - 700+ Podcast Chunks       |                                        |
-|                           +--------------+---------------+                                        |
-+------------------------------------------|--------------------------------------------------------+
-                                           |
-               +---------------------------+---------------------------+
-               |                                                       |
-               v                                                       v
-+-------------------------------+                       +-------------------------------+
-|      PERSISTENT DATABASE      |                       |         LLM PROVIDERS         |
-|  - PostgreSQL 16 (Docker)     |                       |  - Ollama (http://localhost:  |
-|  - SQLite3 (Local Zero-Config)|                       |    11434)                     |
-|  - Sessions, Messages, Art.   |                       |  - Anthropic Claude API       |
-+-------------------------------+                       |  - OpenAI API                 |
-                                                        +-------------------------------+
+```mermaid
+graph TD
+    subgraph Client ["Client Presentation Layer (React 19 + Vite 8)"]
+        UI["Modern 3-Pane Interface"]
+        ModelSwitch["Model Toggle (Ollama / Claude / OpenAI)"]
+        Viewer["Sandboxed Artifact Viewer (iframe)"]
+        UI --- ModelSwitch
+        UI --- Viewer
+    end
+
+    Client -->|"REST / SSE Tokens (/api)"| FastAPI
+
+    subgraph Backend ["Backend Orchestration Layer (FastAPI)"]
+        FastAPI["FastAPI App Gateway"]
+        
+        subgraph Endpoints ["API Surface"]
+            E1["/api/chat (SSE Stream)"]
+            E2["/api/sessions (CRUD)"]
+            E3["/api/artifacts (Render)"]
+            E4["/api/models (Toggle)"]
+            E5["/api/health (Telemetry)"]
+        end
+        FastAPI --> Endpoints
+
+        Orchestrator["Agent Orchestrator (Intent Router)"]
+        Endpoints --> Orchestrator
+
+        subgraph Skills ["Specialized Agent Skills"]
+            S1["Grounded Q&A Skill<br/>(Verbatim Quotes & Footnotes)"]
+            S2["Ship 30 for 30 Skill<br/>(~1,250 words, 1-3-1 Hook)"]
+            S3["Artifact Generator Skill<br/>(Interactive HTML/CSS)"]
+        end
+        Orchestrator --> S1
+        Orchestrator --> S2
+        Orchestrator --> S3
+
+        subgraph RAG ["Grounded RAG Retrieval Engine"]
+            Guard["Domain Guardrail Lexicon"]
+            Retriever["Hybrid TF-IDF + Keyword Booster"]
+            KB[("707 Dialogue-Aware<br/>Podcast Chunks")]
+            Guard --> Retriever
+            KB --> Retriever
+        end
+        S1 --> RAG
+        S2 --> RAG
+        S3 --> RAG
+    end
+
+    subgraph Storage ["Persistence Layer (PostgreSQL / SQLite)"]
+        DB[("Database")]
+        T1["sessions (Chat Context)"]
+        T2["messages (Citations & Telemetry)"]
+        T3["artifacts (Versioned HTML/CSS)"]
+        DB --- T1
+        DB --- T2
+        DB --- T3
+    end
+    FastAPI <-->|"SQLAlchemy 2.0 (Pooler)"| Storage
+
+    subgraph LLM ["Pluggable LLM Providers"]
+        Ollama["Local: Ollama (llama3.2:3b / llama3)"]
+        Claude["Cloud: Anthropic Claude 3.5 Sonnet"]
+        OpenAI["Cloud: OpenAI GPT-4o"]
+        Fallback["Deterministic Grounded Engine"]
+    end
+    Orchestrator <--> LLM
 ```
 
 ---
@@ -133,24 +139,20 @@ CREATE INDEX ix_artifacts_session_id ON artifacts (session_id);
 - **Indexing Matrix:** 707 chunks vectorized with sublinear TF-IDF + unigram/bigram tokenization and serialized into `tfidf_index.pkl`.
 
 ### 3.2 Hybrid Retrieval with Domain Guardrails
-```
-User Query
-    │
-    ▼
-[ Domain Lexicon Verification ] ──(No PM/Growth term)──> Score = 0.0, is_grounded = False
-    │                                                     (Triggers Refusal)
-   (Passed)
-    ▼
-[ TF-IDF Vector Cosine Similarity ]
-    │
-    ├── Acronym Boosting (+0.03 for "PLG", "PMF", "CAC:LTV", "DHM")
-    ├── Guest Name Boosting (+0.08 if guest mentioned)
-    │
-    ▼
-[ Top-K Reranking (Default: top 4) ]
-    │
-    └── Score >= 0.085 ? ──(Yes)──> Inject Passages into Prompt
-                         ──(No)───> Refusal Response
+```mermaid
+flowchart TD
+    Q([User Strategy Query]) --> Guard{Domain Lexicon<br/>Verification}
+    Guard -->|"No Growth/PM Terms"| Refusal["Score = 0.0, is_grounded = False<br/>(Graceful Out-of-Domain Refusal)"]
+    Guard -->|"Keyword Match"| TFIDF["TF-IDF Vector Cosine Similarity<br/>(Against 707 Dialogue Chunks)"]
+    
+    TFIDF --> Boost1["Acronym Boosting (+0.03)<br/>(PLG, PMF, CAC:LTV, DHM)"]
+    Boost1 --> Boost2["Guest Name Boosting (+0.08)<br/>(Elena Verna, Brian Balfour, etc.)"]
+    
+    Boost2 --> Rerank["Top-K Reranking (Top 4 Chunks)"]
+    Rerank --> Threshold{Max Score >= 0.085?}
+    
+    Threshold -->|"Yes (Grounded)"| Context["Inject Transcripts into Prompt<br/>+ Generate Footnote Citations"]
+    Threshold -->|"No"| Refusal
 ```
 
 ---
@@ -178,27 +180,27 @@ The `AgentOrchestrator` determines the user's intent before dispatching to speci
 
 Untrusted LLM-generated HTML poses Cross-Site Scripting (XSS) risks. The Lenny Growth Assistant implements defense-in-depth:
 
-```
-[ LLM Output ]
-      │
-      ▼
-[ Backend Regex Sanitizer ]
-  - Strips <script> tags and inner code
-  - Strips on* event handlers (onclick, onerror, onload)
-  - Disallows javascript: pseudo-protocol
-  - Disallows nested <iframe> and <object> tags
-      │
-      ▼
-[ Database Persistence ]
-      │
-      ▼
-[ Frontend Artifact Viewer ]
-      │
-      ▼
-[ Sandboxed <iframe> ]
-  - sandbox="allow-scripts" (scripts execute in isolation)
-  - NO allow-same-origin (runs in null origin; cannot access parent cookies, tokens, or localStorage)
-  - CSP: default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';
+```mermaid
+flowchart TD
+    LLM([Raw LLM Artifact Output]) --> BackendSanitizer
+
+    subgraph Defense1 ["Layer 1: Backend Regex Sanitization"]
+        BackendSanitizer["Regex Sanitizer Engine"]
+        BackendSanitizer --> S1["Strip &lt;script&gt; tags and inner logic"]
+        BackendSanitizer --> S2["Strip on* attributes (onclick, onerror)"]
+        BackendSanitizer --> S3["Disallow javascript: pseudo-protocols"]
+        BackendSanitizer --> S4["Disallow nested &lt;iframe&gt; and &lt;object&gt;"]
+    end
+
+    Defense1 --> DB[(PostgreSQL / Supabase Storage)]
+    DB --> ClientApp["Frontend React Client"]
+
+    subgraph Defense2 ["Layer 2: Browser Isolated Sandbox"]
+        ClientApp --> IFrame["&lt;iframe sandbox='allow-scripts'&gt;"]
+        IFrame --> Sec1["Null Origin Enforcement<br/>(No allow-same-origin: cannot access parent DOM)"]
+        IFrame --> Sec2["Credential Isolation<br/>(Zero access to cookies, JWTs, or localStorage)"]
+        IFrame --> Sec3["CSP: default-src 'none'; style-src 'unsafe-inline'"]
+    end
 ```
 
 ---
