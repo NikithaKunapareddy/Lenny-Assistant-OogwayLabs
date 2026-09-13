@@ -1,300 +1,399 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { 
-  Send, Menu, Sparkles, Layers, ArrowRight, User, Bot, 
-  Compass, Zap, TrendingUp, BookOpen, CheckCircle2 
+import {
+  Send, Menu, Layers, TrendingUp, BookOpen,
+  RefreshCw, CheckCircle2, Zap, ChevronDown
 } from 'lucide-react';
 import SourceCard from './SourceCard';
+import { MODEL_META } from './Sidebar';
+
+const STARTER_CARDS = [
+  { title: 'B2B SaaS Retention', sub: 'Elena Verna & Casey Winters on churn and habit loops.', icon: TrendingUp, prompt: 'How can I improve user retention in B2B SaaS?' },
+  { title: 'Ship 30 Essay', sub: 'Generate a ~1,250-word piece with 1-3-1 hook rule.', icon: BookOpen, prompt: 'Write a Ship 30 for 30 essay about product retention architecture.' },
+  { title: 'Interactive Framework', sub: 'Render native HTML checklists in the side viewer.', icon: Layers, prompt: 'Create a product retention audit framework with an interactive HTML checklist.' },
+  { title: 'PMF Survey Method', sub: "Sean Ellis' 40% benchmark test for product-market fit.", icon: CheckCircle2, prompt: 'What is the 40% PMF rule by Sean Ellis and how do I apply it?' },
+];
 
 export default function ChatArea({
-  session,
-  messages,
-  isLoading,
-  streamingToken,
-  onSendMessage,
-  onOpenArtifact,
-  activeArtifact,
-  onToggleSidebar
+  session, messages, isLoading, onSendMessage,
+  onOpenArtifact, activeArtifact, onToggleSidebar,
+  modelInfo, onSwitchModel, onClearChat, onExportChat
 }) {
   const [input, setInput] = useState('');
+  const [showCtx, setShowCtx] = useState(false);
+  const [showModelPill, setShowModelPill] = useState(false);
+  const [summaryModal, setSummaryModal] = useState(false);
+  const [summaryData, setSummaryData] = useState({ text: null, loading: false });
+  const [copyToast, setCopyToast] = useState(false);
   const messagesEndRef = useRef(null);
+  const textareaRef = useRef(null);
+  const ctxRef = useRef(null);
+  const modelPillRef = useRef(null);
 
+  useEffect(() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, isLoading]);
+
+  // Auto-resize textarea
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streamingToken]);
+    const el = textareaRef.current;
+    if (!el) return;
+    el.style.height = 'auto';
+    el.style.height = Math.min(el.scrollHeight, 180) + 'px';
+  }, [input]);
+
+  // Close dropdowns on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (ctxRef.current && !ctxRef.current.contains(e.target)) setShowCtx(false);
+      if (modelPillRef.current && !modelPillRef.current.contains(e.target)) setShowModelPill(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!input.trim() || isLoading) return;
     onSendMessage(input.trim());
     setInput('');
+    if (textareaRef.current) textareaRef.current.style.height = 'auto';
   };
 
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSubmit(e); }
+  };
+
+  // Build chat summary from messages
+  const buildSummary = () => {
+    if (!messages || messages.length === 0) return 'No messages yet.';
+    const pairs = [];
+    for (let i = 0; i < messages.length; i += 2) {
+      const q = messages[i]?.content || '';
+      const a = messages[i + 1]?.content || '';
+      if (q) pairs.push(`**Q:** ${q.slice(0, 120)}${q.length > 120 ? '…' : ''}\n**A:** ${a.slice(0, 200)}${a.length > 200 ? '…' : ''}`);
+    }
+    return pairs.join('\n\n---\n\n') || 'No messages.';
+  };
+
+  const handleCopyChat = () => {
+    const text = messages.map(m => `[${m.role.toUpperCase()}]\n${m.content}`).join('\n\n---\n\n');
+    navigator.clipboard.writeText(text).then(() => {
+      setCopyToast(true);
+      setTimeout(() => setCopyToast(false), 2000);
+    });
+    setShowCtx(false);
+  };
+
+  const handleExport = () => {
+    const text = messages.map(m => `[${m.role.toUpperCase()}]\n${m.content}`).join('\n\n---\n\n');
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = `${session?.title || 'chat'}.txt`; a.click();
+    URL.revokeObjectURL(url);
+    setShowCtx(false);
+  };
+
+  const activeModel = MODEL_META[modelInfo?.active_provider];
+
   return (
-    <div className="flex-1 flex flex-col h-full bg-slate-950/40 backdrop-blur-xl overflow-hidden relative">
-      {/* Top Navigation Bar */}
-      <header className="h-16 border-b border-slate-800/80 bg-slate-950/70 backdrop-blur-xl px-4 md:px-6 flex items-center justify-between shrink-0 z-10">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={onToggleSidebar}
-            className="p-2 text-slate-400 hover:text-white hover:bg-slate-800/60 rounded-xl lg:hidden transition-colors"
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-white truncate max-w-xs sm:max-w-md tracking-tight">
-                {session ? session.title : 'The Lenny Growth Assistant'}
-              </h2>
-              <span className="hidden sm:inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                ● Live Knowledge Base
-              </span>
-            </div>
-            <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
-              <span className="flex items-center gap-1 text-indigo-400 font-medium">
-                <Sparkles className="w-3 h-3 text-amber-400" />
-                707 Curated Lenny Podcast Chunks • Elena Verna, Brian Balfour, Casey Winters
-              </span>
-            </div>
+    <div className="main">
+      {/* Topbar */}
+      <header className="topbar">
+        <div className="topbar__left">
+          {/* Hamburger = Actions Menu (not sidebar toggle) */}
+          <div style={{ position: 'relative' }} ref={ctxRef}>
+            <button
+              className="icon-btn"
+              onClick={() => setShowCtx(v => !v)}
+              aria-label="Chat actions"
+              title="Chat actions"
+            >
+              <Menu size={18} />
+            </button>
+
+            {showCtx && (
+              <div className="ham-menu glass">
+                <div className="ham-menu__title">Chat Actions</div>
+                <button className="ham-item" onClick={async () => {
+                  setShowCtx(false);
+                  setSummaryModal(true);
+                  if (messages.length === 0) return;
+                  setSummaryData({ text: null, loading: true });
+                  try {
+                    const res = await api.summarizeSession(session.id, modelInfo?.active_provider);
+                    setSummaryData({ text: res.summary, loading: false });
+                  } catch (err) {
+                    setSummaryData({ text: 'Failed to generate summary.', loading: false });
+                  }
+                }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                  Summarize this chat
+                </button>
+                <button className="ham-item" onClick={() => { handleCopyChat(); setShowCtx(false); }} disabled={messages.length === 0}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  Copy all messages
+                </button>
+                <button className="ham-item" onClick={() => { handleExport(); setShowCtx(false); }} disabled={messages.length === 0}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                  Extract as .txt
+                </button>
+                <div className="ham-sep" />
+                <button
+                  className="ham-item ham-item--danger"
+                  onClick={() => { if (window.confirm('Clear all messages in this chat?')) { onClearChat(); setShowCtx(false); } }}
+                  disabled={messages.length === 0}
+                >
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                  Clear this chat
+                </button>
+              </div>
+            )}
           </div>
+
+          <span className="topbar__title">{session?.title || 'Lenny Growth Assistant'}</span>
         </div>
 
-        {activeArtifact && (
-          <button
-            onClick={() => onOpenArtifact(activeArtifact)}
-            className="flex items-center gap-2 py-1.5 px-3 rounded-xl bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 text-white text-xs font-bold hover:shadow-lg hover:shadow-purple-500/25 transition-all shadow-md active:scale-95"
-          >
-            <Layers className="w-3.5 h-3.5" />
-            <span>Open {activeArtifact.title.slice(0, 18)}...</span>
-          </button>
-        )}
+        <div className="topbar__right">
+          {activeArtifact && (
+            <button
+              onClick={() => onOpenArtifact(activeArtifact)}
+              style={{
+                display: 'flex', alignItems: 'center', gap: 6,
+                padding: '5px 12px', borderRadius: 8,
+                border: '1px solid var(--border)',
+                background: 'var(--bg-elevated)',
+                color: 'var(--text)', fontSize: 13, fontWeight: 500,
+                cursor: 'pointer', fontFamily: 'var(--font)',
+                transition: 'background 0.12s'
+              }}
+            >
+              <Layers size={13} /> View Artifact
+            </button>
+          )}
+        </div>
       </header>
 
-      {/* Messages Scroll Area */}
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-6">
+      {/* Copy toast */}
+      {copyToast && (
+        <div style={{
+          position: 'fixed', bottom: 100, left: '50%', transform: 'translateX(-50%)',
+          background: 'var(--bg-elevated)', border: '1px solid var(--border)',
+          borderRadius: 10, padding: '8px 18px', fontSize: 13, fontWeight: 500,
+          color: 'var(--text)', boxShadow: 'var(--shadow-md)', zIndex: 999,
+          animation: 'fadeUp 0.2s ease'
+        }}>
+          Copied to clipboard ✓
+        </div>
+      )}
+
+      {/* Messages */}
+      <div className="messages">
         {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center max-w-2xl mx-auto py-8">
-            {/* Multi-color glowing icon */}
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-indigo-500 via-purple-500 to-pink-500 p-0.5 shadow-xl shadow-purple-500/25 mb-4 animate-gradient">
-              <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center text-white">
-                <Compass className="w-8 h-8 text-transparent bg-clip-text bg-gradient-to-tr from-sky-400 via-indigo-400 to-pink-400" />
-              </div>
+          <div className="welcome">
+            <div className="welcome-icon">
+              <RefreshCw size={21} color="#0f0f0f" />
             </div>
-
-            <h3 className="text-2xl font-extrabold text-white mb-2 tracking-tight">
-              Lenny Growth Assistant
-            </h3>
-            <p className="text-slate-400 text-sm mb-8 max-w-lg leading-relaxed">
-              Ask deep strategy questions grounded strictly in <span className="text-emerald-400 font-semibold">Lenny's Podcast transcripts</span>. 
-              Generate <span className="text-purple-400 font-semibold">Ship 30 essays</span> and render <span className="text-orange-400 font-semibold">interactive HTML frameworks</span> natively.
+            <h1 className="welcome-title">Lenny Growth Assistant</h1>
+            <p className="welcome-sub">
+              Ask strategy questions grounded in{' '}
+              <strong>Lenny's Podcast transcripts</strong> — 707 curated chunks from Elena Verna,
+              Brian Balfour, Casey Winters, Sean Ellis, and more.
             </p>
-
-            {/* Colorful Strategy Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 w-full text-left">
-              {/* Card 1: Emerald Green for Retention */}
-              <div
-                onClick={() => onSendMessage("How can I improve user retention in B2B SaaS?")}
-                className="p-4 rounded-2xl bg-gradient-to-br from-slate-900/90 to-emerald-950/30 border border-emerald-500/30 hover:border-emerald-400/70 hover:shadow-lg hover:shadow-emerald-500/10 cursor-pointer transition-all group"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
-                    <TrendingUp className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-bold text-emerald-300">B2B SaaS Retention</span>
-                  <ArrowRight className="w-3.5 h-3.5 ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-emerald-400" />
-                </div>
-                <div className="text-xs text-slate-400 leading-relaxed">
-                  Elena Verna & Casey Winters playbook on churn diagnosis and habit loops.
-                </div>
-              </div>
-
-              {/* Card 2: Neon Purple for Ship 30 */}
-              <div
-                onClick={() => onSendMessage("Turn this into a Ship 30 for 30 essay about retention")}
-                className="p-4 rounded-2xl bg-gradient-to-br from-slate-900/90 to-purple-950/30 border border-purple-500/30 hover:border-purple-400/70 hover:shadow-lg hover:shadow-purple-500/10 cursor-pointer transition-all group"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="p-1.5 rounded-lg bg-purple-500/20 text-purple-400">
-                    <BookOpen className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-bold text-purple-300">Ship 30 for 30 Essay</span>
-                  <ArrowRight className="w-3.5 h-3.5 ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-purple-400" />
-                </div>
-                <div className="text-xs text-slate-400 leading-relaxed">
-                  Generate a ~1,250-word structured piece with 1-3-1 hook rule and subheadings.
-                </div>
-              </div>
-
-              {/* Card 3: Sunset Orange for Artifact Framework */}
-              <div
-                onClick={() => onSendMessage("Create a product retention audit framework with an HTML checklist")}
-                className="p-4 rounded-2xl bg-gradient-to-br from-slate-900/90 to-orange-950/30 border border-orange-500/30 hover:border-orange-400/70 hover:shadow-lg hover:shadow-orange-500/10 cursor-pointer transition-all group"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="p-1.5 rounded-lg bg-orange-500/20 text-orange-400">
-                    <Layers className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-bold text-orange-300">Interactive Framework</span>
-                  <ArrowRight className="w-3.5 h-3.5 ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-orange-400" />
-                </div>
-                <div className="text-xs text-slate-400 leading-relaxed">
-                  Render native HTML/CSS cards and interactive checklists in the side viewer.
-                </div>
-              </div>
-
-              {/* Card 4: Cyan / Electric Blue for 40% PMF */}
-              <div
-                onClick={() => onSendMessage("What is the 40% PMF rule by Sean Ellis?")}
-                className="p-4 rounded-2xl bg-gradient-to-br from-slate-900/90 to-sky-950/30 border border-sky-500/30 hover:border-sky-400/70 hover:shadow-lg hover:shadow-sky-500/10 cursor-pointer transition-all group"
-              >
-                <div className="flex items-center gap-2 mb-2">
-                  <div className="p-1.5 rounded-lg bg-sky-500/20 text-sky-400">
-                    <CheckCircle2 className="w-4 h-4" />
-                  </div>
-                  <span className="text-xs font-bold text-sky-300">40% PMF Survey</span>
-                  <ArrowRight className="w-3.5 h-3.5 ml-auto opacity-0 group-hover:opacity-100 transition-opacity text-sky-400" />
-                </div>
-                <div className="text-xs text-slate-400 leading-relaxed">
-                  Sean Ellis benchmark test to determine true product-market fit before scaling.
-                </div>
-              </div>
+            <div className="welcome-grid">
+              {STARTER_CARDS.map((c, i) => {
+                const Icon = c.icon;
+                return (
+                  <button key={i} className="welcome-card" onClick={() => onSendMessage(c.prompt)}>
+                    <div className="welcome-card__title">
+                      <Icon size={13} style={{ color: 'var(--accent)' }} />
+                      {c.title}
+                    </div>
+                    <div className="welcome-card__sub">{c.sub}</div>
+                  </button>
+                );
+              })}
             </div>
           </div>
         ) : (
-          messages.map((msg, idx) => (
-            <div
-              key={idx}
-              className={`flex gap-3.5 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
-            >
-              {msg.role !== 'user' && (
-                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-emerald-500 via-indigo-600 to-pink-500 flex items-center justify-center text-white shrink-0 mt-1 shadow-lg shadow-indigo-500/20 p-0.5">
-                  <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
-                    <Bot className="w-4 h-4 text-emerald-400" />
-                  </div>
+          <div className="messages-inner">
+            {messages.map((msg, idx) => (
+              <div key={idx} className={`message-row message-row--${msg.role}`}>
+                <div className={`msg-avatar msg-avatar--${msg.role === 'user' ? 'user' : 'ai'}`}>
+                  {msg.role === 'user' ? (
+                    /* Facebook-style default person SVG */
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                      <path d="M12 12c2.7 0 4.8-2.1 4.8-4.8S14.7 2.4 12 2.4 7.2 4.5 7.2 7.2 9.3 12 12 12zm0 2.4c-3.2 0-9.6 1.6-9.6 4.8v2.4h19.2v-2.4c0-3.2-6.4-4.8-9.6-4.8z"/>
+                    </svg>
+                  ) : 'L'}
                 </div>
-              )}
-
-              <div
-                className={`max-w-2xl rounded-2xl p-5 text-sm leading-relaxed transition-all ${
-                  msg.role === 'user'
-                    ? 'bg-gradient-to-r from-indigo-600 via-purple-600 to-indigo-700 text-white rounded-tr-sm shadow-lg shadow-indigo-600/20 font-medium'
-                    : 'bg-slate-900/90 border border-slate-800 text-slate-200 rounded-tl-sm shadow-md'
-                }`}
-              >
-                {/* Real Markdown Rendering: Eliminates raw stars and hashes */}
-                {msg.role === 'user' ? (
-                  <div className="whitespace-pre-wrap">{msg.content}</div>
-                ) : (
-                  <div className="markdown-content">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {msg.content}
-                    </ReactMarkdown>
-                  </div>
-                )}
-
-                {/* If an artifact is attached to this message */}
-                {msg.artifact && (
-                  <div className="mt-4 pt-4 border-t border-slate-800/80 flex items-center justify-between gap-3">
-                    <div>
-                      <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <Layers className="w-3.5 h-3.5 text-orange-400" />
-                        {msg.artifact.title}
+                <div className="msg-body">
+                  {msg.role === 'user' ? (
+                    <div className="msg-bubble--user">{msg.content}</div>
+                  ) : (
+                    <div className="msg-ai-content">
+                      <div className="prose">
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>{msg.content}</ReactMarkdown>
                       </div>
-                      <div className="text-[11px] text-slate-400">Interactive framework ready in viewer</div>
+                      {msg.artifact && (
+                        <div className="artifact-inline">
+                          <div className="artifact-inline__header">
+                            <div className="artifact-inline__label">
+                              <Layers size={13} /> {msg.artifact.title}
+                            </div>
+                            <button className="artifact-inline__open" onClick={() => onOpenArtifact(msg.artifact)}>
+                              Open →
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      {msg.sources?.length > 0 && <SourceCard sources={msg.sources} />}
+                      {msg.latency_ms && (
+                        <div className="msg-meta">
+                          <Zap size={11} />
+                          <span>{msg.latency_ms}ms</span>
+                          {msg.skill_used && <span className="msg-meta__badge">{msg.skill_used}</span>}
+                        </div>
+                      )}
                     </div>
-                    <button
-                      onClick={() => onOpenArtifact(msg.artifact)}
-                      className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-orange-500 via-pink-600 to-purple-600 hover:from-orange-400 hover:to-purple-500 text-white font-bold text-xs shadow-md shadow-orange-500/20 transition-all active:scale-95 shrink-0"
-                    >
-                      Open Artifact
-                    </button>
-                  </div>
-                )}
-
-                {/* Grounded Citations */}
-                {msg.sources && msg.sources.length > 0 && (
-                  <SourceCard sources={msg.sources} />
-                )}
-
-                {/* Latency & Skill Badge */}
-                {msg.latency_ms && (
-                  <div className="mt-3 pt-2 border-t border-slate-800/50 text-[10px] text-slate-500 flex items-center justify-between">
-                    <span className="flex items-center gap-1">
-                      <Zap className="w-3 h-3 text-amber-400" />
-                      Latency: <strong className="text-slate-400 font-mono">{msg.latency_ms}ms</strong>
-                    </span>
-                    {msg.skill_used && (
-                      <span className="px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 font-mono uppercase text-[9px] font-semibold">
-                        Skill: {msg.skill_used}
-                      </span>
-                    )}
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
+            ))}
 
-              {msg.role === 'user' && (
-                <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-purple-600 to-pink-600 flex items-center justify-center text-white shrink-0 mt-1 shadow-md shadow-purple-600/25">
-                  <User className="w-4 h-4" />
-                </div>
-              )}
-            </div>
-          ))
-        )}
-
-        {/* Streaming message indicator */}
-        {isLoading && (
-          <div className="flex gap-3.5 justify-start">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-emerald-500 via-indigo-600 to-pink-500 flex items-center justify-center text-white shrink-0 mt-1 shadow-lg shadow-indigo-500/20 p-0.5">
-              <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
-                <Bot className="w-4 h-4 text-emerald-400" />
-              </div>
-            </div>
-            <div className="max-w-2xl rounded-2xl p-5 text-sm bg-slate-900/90 border border-slate-800 text-slate-200 rounded-tl-sm">
-              {streamingToken ? (
-                <div className="markdown-content">
-                  <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                    {streamingToken}
-                  </ReactMarkdown>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3 text-slate-300 text-xs py-1">
-                  <div className="flex space-x-1">
-                    <div className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 rounded-full bg-sky-400 animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-2 h-2 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+            {/* Premium loading animation — dots only */}
+            {isLoading && (
+              <div className="message-row anim-fadeUp">
+                <div className="msg-avatar msg-avatar--ai">L</div>
+                <div className="msg-body">
+                  <div className="typing-indicator">
+                    <div className="typing-dot" />
+                    <div className="typing-dot" />
+                    <div className="typing-dot" />
                   </div>
-                  <span className="font-medium text-slate-400">Searching transcripts & synthesizing grounded insights...</span>
                 </div>
-              )}
-            </div>
+              </div>
+            )}
+            <div ref={messagesEndRef} />
           </div>
         )}
-
-        <div ref={messagesEndRef} />
       </div>
 
-      {/* Input Box with Colorful Ring */}
-      <div className="p-4 md:p-6 border-t border-slate-800/80 bg-slate-950/80 backdrop-blur-xl shrink-0">
-        <form onSubmit={handleSubmit} className="max-w-4xl mx-auto relative flex items-center">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask a PM or growth question from Lenny's transcripts (e.g. retention, activation, loops)..."
-            disabled={isLoading}
-            className="w-full bg-slate-900/90 border border-slate-800 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/20 text-slate-100 placeholder-slate-500 rounded-2xl px-5 py-3.5 pr-14 text-sm focus:outline-none transition-all shadow-inner"
-          />
-          <button
-            type="submit"
-            disabled={!input.trim() || isLoading}
-            className="absolute right-2.5 p-2.5 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 hover:from-indigo-500 hover:to-pink-500 disabled:from-slate-800 disabled:to-slate-800 text-white disabled:text-slate-600 rounded-xl transition-all shadow-md active:scale-95"
-            title="Send Message"
-          >
-            <Send className="w-4 h-4" />
-          </button>
-        </form>
+      {/* ── Input area ── */}
+      <div className="input-wrap">
+        <div className="input-shell">
+          <form onSubmit={handleSubmit}>
+            <div className="input-container">
+              <textarea
+                ref={textareaRef}
+                className="input-textarea"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Ask a growth or product question from Lenny's Podcast…"
+                disabled={isLoading}
+                rows={1}
+                aria-label="Message input"
+              />
+
+              <div className="input-right">
+                {/* Model pill dropdown — Gemini-style */}
+                <div style={{ position: 'relative' }} ref={modelPillRef}>
+                  <button
+                    type="button"
+                    className="model-pill"
+                    onClick={() => setShowModelPill(v => !v)}
+                    title="Change model"
+                  >
+                    <span style={{ fontSize: 11.5 }}>
+                      {activeModel?.label?.split(' ').slice(1, 3).join(' ') || 'Local'}
+                    </span>
+                    <ChevronDown size={11} />
+                  </button>
+
+                  {showModelPill && (
+                    <div className="model-pill-dropdown">
+                      {Object.entries(MODEL_META).map(([key, m]) => (
+                        <button
+                          key={key}
+                          type="button"
+                          className={`model-option${modelInfo?.active_provider === key ? ' model-option--active' : ''}`}
+                          onClick={() => { onSwitchModel(key); setShowModelPill(false); }}
+                        >
+                          {modelInfo?.active_provider === key
+                            ? <span className="model-option__dot" />
+                            : <span className="model-option__spacer" />}
+                          <span className="model-option__label">{m.label}</span>
+                          <span className="model-option__badge">{m.badge}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Send */}
+                <button
+                  type="submit"
+                  className={`send-btn${input.trim() && !isLoading ? ' send-btn--active' : ''}`}
+                  disabled={!input.trim() || isLoading}
+                  aria-label="Send message"
+                >
+                  <Send size={15} />
+                </button>
+              </div>
+            </div>
+          </form>
+
+          <div className="input-hint">Enter to send · Shift+Enter for newline</div>
+        </div>
       </div>
+
+      {/* Summary modal */}
+      {summaryModal && (
+        <div className="modal-backdrop" onClick={() => setSummaryModal(false)}>
+          <div className="modal" onClick={e => e.stopPropagation()}>
+            <div className="modal__header">
+              <span className="modal__title">📋 Chat Summary</span>
+              <button className="icon-btn" onClick={() => setSummaryModal(false)}><span style={{ fontSize: 18 }}>×</span></button>
+            </div>
+            <div className="modal__body">
+              {messages.length === 0
+                ? <p style={{ color: 'var(--text-muted)' }}>No messages in this chat yet.</p>
+                : (
+                  <>
+                    <p style={{ marginBottom: 16, color: 'var(--text-muted)', fontSize: 13 }}>
+                      Generated by <strong>{modelInfo?.active_provider || 'AI'}</strong> for session: <em>{session?.title}</em>
+                    </p>
+                    
+                    {summaryData.loading ? (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--text-muted)' }}>
+                        <div className="typing-dot" style={{ background: 'var(--accent)' }} />
+                        <div className="typing-dot" style={{ background: 'var(--accent)' }} />
+                        <div className="typing-dot" style={{ background: 'var(--accent)' }} />
+                        <span style={{ fontSize: 13, marginLeft: 8 }}>Reading conversation...</span>
+                      </div>
+                    ) : (
+                      <div className="md-content glass" style={{ 
+                        padding: '14px 18px', 
+                        borderRadius: 12, 
+                        background: 'var(--bg-hover)', 
+                        border: '1px solid var(--border)' 
+                      }}>
+                        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                          {summaryData.text || ''}
+                        </ReactMarkdown>
+                      </div>
+                    )}
+                  </>
+                )}
+            </div>
+            <div className="modal__footer">
+              <button className="btn" onClick={() => setSummaryModal(false)}>Close</button>
+              <button className="btn btn--accent" onClick={() => { handleCopyChat(); setSummaryModal(false); }}>Copy all</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

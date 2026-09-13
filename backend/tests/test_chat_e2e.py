@@ -43,10 +43,11 @@ def test_chat_ship30_essay_generation():
     assert data["skill_used"] == "ship30"
     content = data["response"]
     word_count = len(content.split())
-    # Should be substantial long-form content
-    assert word_count > 400
-    assert "##" in content # Markdown headings
-    assert "Step" in content or "Protocol" in content
+    # Mock engine generates comprehensive long-form content; assert substantial length
+    # Real Ollama/Claude output should be ~1,250 words (max_tokens=1800)
+    assert word_count > 900, f"Ship30 essay too short: {word_count} words (expected > 900)"
+    assert "##" in content  # Markdown headings
+    assert "Step" in content or "Protocol" in content or "Framework" in content
 
 def test_chat_artifact_generation_and_sanitization():
     # 1. Request Framework Artifact

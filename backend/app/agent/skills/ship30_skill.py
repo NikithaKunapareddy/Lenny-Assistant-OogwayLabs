@@ -25,13 +25,13 @@ class Ship30Skill:
         if not cleaned_query:
             cleaned_query = "product retention and growth frameworks"
 
-        search_res = retriever.search(cleaned_query, top_k=2, threshold=0.05)
+        search_res = retriever.search(cleaned_query, top_k=5, threshold=0.05)
         short_results = []
-        for r in search_res["results"][:2]:
+        for r in search_res["results"][:5]:
             r_copy = dict(r)
             words = r_copy.get("content", "").split()
-            if len(words) > 200:
-                r_copy["content"] = " ".join(words[:200]) + "..."
+            if len(words) > 300:
+                r_copy["content"] = " ".join(words[:300]) + "..."
             short_results.append(r_copy)
 
         context_str = retriever.format_sources_for_prompt(short_results)
@@ -48,7 +48,7 @@ class Ship30Skill:
             prompt=prompt,
             system_prompt=SHIP30_ESSAY_SYSTEM_PROMPT,
             temperature=0.7,
-            max_tokens=700
+            max_tokens=1800
         )
 
         return {

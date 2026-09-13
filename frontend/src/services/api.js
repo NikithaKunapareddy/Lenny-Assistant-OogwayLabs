@@ -44,10 +44,28 @@ export const api = {
   },
 
   async deleteSession(sessionId) {
-    const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
-      method: 'DELETE'
-    });
+    const res = await fetch(`${API_BASE}/sessions/${sessionId}`, { method: 'DELETE' });
     return res.status === 204;
+  },
+
+  async renameSession(sessionId, title) {
+    const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title })
+    });
+    if (!res.ok) throw new Error('Rename failed');
+    return res.json();
+  },
+
+  async summarizeSession(sessionId, modelProvider = null) {
+    const res = await fetch(`${API_BASE}/sessions/${sessionId}/summarize`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model_provider: modelProvider })
+    });
+    if (!res.ok) throw new Error('Summarize failed');
+    return res.json();
   },
 
   // Chat

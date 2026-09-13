@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import './index.css';
+import './App.css';
 import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 import ArtifactViewer from './components/ArtifactViewer';
 import { api } from './services/api';
+import { Sun, Moon } from 'lucide-react';
 
 export default function App() {
   const [sessions, setSessions] = useState([]);
@@ -10,205 +13,153 @@ export default function App() {
   const [activeSession, setActiveSession] = useState(null);
   const [messages, setMessages] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [streamingToken, setStreamingToken] = useState('');
   const [activeArtifact, setActiveArtifact] = useState(null);
-  const [isArtifactViewerOpen, setIsArtifactViewerOpen] = useState(false);
+  const [isArtifactOpen, setIsArtifactOpen] = useState(false);
   const [modelInfo, setModelInfo] = useState(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(false); // only used for mobile overlay
+  const [theme, setTheme] = useState(() => localStorage.getItem('lenny-theme') || 'dark');
 
-  // Initialize: Load models and sessions
   useEffect(() => {
-    loadModels();
-    loadSessions();
-  }, []);
+    document.documentElement.setAttribute('data-theme', theme);
+    localStorage.setItem('lenny-theme', theme);
+  }, [theme]);
 
-  // When active session changes, load details
-  useEffect(() => {
-    if (activeSessionId) {
-      loadSessionDetails(activeSessionId);
-    }
-  }, [activeSessionId]);
+  useEffect(() => { loadModels(); loadSessions(); }, []);
+  useEffect(() => { if (activeSessionId) loadSessionDetails(activeSessionId); }, [activeSessionId]);
 
   const loadModels = async () => {
-    try {
-      const data = await api.getModels();
-      setModelInfo(data);
-    } catch (err) {
-      console.error('Failed to load models:', err);
-    }
+    try { setModelInfo(await api.getModels()); } catch {}
   };
 
   const loadSessions = async () => {
     try {
       const data = await api.getSessions();
       setSessions(data);
-      if (data.length > 0 && !activeSessionId) {
-        setActiveSessionId(data[0].id);
-      }
-    } catch (err) {
-      console.error('Failed to load sessions:', err);
-    }
+      if (data.length > 0 && !activeSessionId) setActiveSessionId(data[0].id);
+    } catch {}
   };
 
-  const loadSessionDetails = async (sessionId) => {
+  const loadSessionDetails = async (id) => {
     try {
-      const data = await api.getSession(sessionId);
+      const data = await api.getSession(id);
       setActiveSession(data);
       setMessages(data.messages || []);
-
-      // If the session has an artifact, set it
-      if (data.artifacts && data.artifacts.length > 0) {
-        setActiveArtifact(data.artifacts[0]);
-      } else {
-        setActiveArtifact(null);
-        setIsArtifactViewerOpen(false);
-      }
-    } catch (err) {
-      console.error('Failed to load session details:', err);
-    }
+      if (data.artifacts?.length > 0) { setActiveArtifact(data.artifacts[0]); }
+      else { setActiveArtifact(null); setIsArtifactOpen(false); }
+    } catch {}
   };
 
   const handleNewChat = async () => {
     try {
-      const newSess = await api.createSession('New Strategy Chat', modelInfo?.active_provider);
-      setSessions([newSess, ...sessions]);
-      setActiveSessionId(newSess.id);
-      setActiveSession(newSess);
+      const s = await api.createSession('New chat', modelInfo?.active_provider);
+      setSessions([s, ...sessions]);
+      setActiveSessionId(s.id);
+      setActiveSession(s);
       setMessages([]);
       setActiveArtifact(null);
-      setIsArtifactViewerOpen(false);
+      setIsArtifactOpen(false);
       setSidebarOpen(false);
-    } catch (err) {
-      console.error('Failed to create session:', err);
-    }
+    } catch {}
   };
 
-  const handleDeleteSession = async (sessionId) => {
+  const handleDeleteSession = async (id) => {
     try {
-      await api.deleteSession(sessionId);
-      const remaining = sessions.filter((s) => s.id !== sessionId);
+      await api.deleteSession(id);
+      const remaining = sessions.filter(s => s.id !== id);
       setSessions(remaining);
-      if (activeSessionId === sessionId) {
-        if (remaining.length > 0) {
-          setActiveSessionId(remaining[0].id);
-        } else {
-          setActiveSessionId(null);
-          setActiveSession(null);
-          setMessages([]);
-          setActiveArtifact(null);
-          setIsArtifactViewerOpen(false);
-        }
+      if (activeSessionId === id) {
+        if (remaining.length > 0) { setActiveSessionId(remaining[0].id); }
+        else { setActiveSessionId(null); setActiveSession(null); setMessages([]); setActiveArtifact(null); setIsArtifactOpen(false); }
       }
-    } catch (err) {
-      console.error('Failed to delete session:', err);
-    }
+    } catch {}
+  };
+
+  const handleRenameSession = async (id, title) => {
+    try {
+      await api.renameSession(id, title);
+      setSessions(prev => prev.map(s => s.id === id ? { ...s, title } : s));
+      if (activeSessionId === id) setActiveSession(prev => ({ ...prev, title }));
+    } catch {}
   };
 
   const handleSwitchModel = async (provider) => {
     try {
       const res = await api.switchModel(provider);
-      setModelInfo((prev) => ({ ...prev, active_provider: res.active_provider }));
-    } catch (err) {
-      console.error('Failed to switch model:', err);
-    }
+      setModelInfo(prev => ({ ...prev, active_provider: res.active_provider }));
+    } catch {}
   };
 
   const handleSendMessage = async (text) => {
     if (!text.trim()) return;
-
-    // Optimistically append user message
-    const userMsg = { role: 'user', content: text };
-    setMessages((prev) => [...prev, userMsg]);
+    setMessages(prev => [...prev, { role: 'user', content: text }]);
     setIsLoading(true);
-    setStreamingToken('');
-
     try {
       const res = await api.sendChatMessage(activeSessionId, text, modelInfo?.active_provider);
-
-      // Assistant response
-      const assistantMsg = {
+      setMessages(prev => [...prev, {
         role: 'assistant',
         content: res.response,
         sources: res.sources,
         artifact: res.artifact,
         latency_ms: res.latency_ms,
-        skill_used: res.skill_used
-      };
-
-      setMessages((prev) => [...prev, assistantMsg]);
-
-      // If an artifact was generated, open the viewer automatically!
-      if (res.artifact) {
-        setActiveArtifact(res.artifact);
-        setIsArtifactViewerOpen(true);
-      }
-
-      // If activeSessionId was null, set it to the newly created session
-      if (!activeSessionId) {
-        setActiveSessionId(res.session_id);
-      }
-
-      loadSessions(); // refresh titles
+        skill_used: res.skill_used,
+      }]);
+      if (res.artifact) { setActiveArtifact(res.artifact); setIsArtifactOpen(true); }
+      if (!activeSessionId && res.session_id) setActiveSessionId(res.session_id);
+      loadSessions();
     } catch (err) {
-      console.error('Chat error:', err);
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: `Error: ${err.message || 'Failed to generate response'}. Please try again.`
-        }
-      ]);
+      setMessages(prev => [...prev, { role: 'assistant', content: `Error: ${err.message || 'Please try again.'}` }]);
     } finally {
       setIsLoading(false);
-      setStreamingToken('');
     }
   };
 
-  const handleOpenArtifact = (art) => {
-    setActiveArtifact(art);
-    setIsArtifactViewerOpen(true);
+  const handleClearChat = () => {
+    setMessages([]);
+    setActiveArtifact(null);
+    setIsArtifactOpen(false);
   };
 
   return (
-    <div className="flex h-screen w-screen bg-slate-950 text-slate-100 overflow-hidden font-sans">
-      {/* Left Sidebar */}
+    <div className="app">
       <Sidebar
         sessions={sessions}
         activeSessionId={activeSessionId}
-        onSelectSession={(id) => {
-          setActiveSessionId(id);
-          setSidebarOpen(false);
-        }}
+        onSelectSession={id => { setActiveSessionId(id); if (window.innerWidth < 768) setSidebarOpen(false); }}
         onNewChat={handleNewChat}
         onDeleteSession={handleDeleteSession}
+        onRenameSession={handleRenameSession}
         modelInfo={modelInfo}
         onSwitchModel={handleSwitchModel}
-        onSelectPreset={(prompt) => {
-          handleSendMessage(prompt);
-          setSidebarOpen(false);
-        }}
+        onSelectPreset={text => { handleSendMessage(text); if (window.innerWidth < 768) setSidebarOpen(false); }}
         isOpen={sidebarOpen}
         onClose={() => setSidebarOpen(false)}
       />
 
-      {/* Main Chat Interface */}
       <ChatArea
         session={activeSession}
         messages={messages}
         isLoading={isLoading}
-        streamingToken={streamingToken}
         onSendMessage={handleSendMessage}
-        onOpenArtifact={handleOpenArtifact}
+        onOpenArtifact={art => { setActiveArtifact(art); setIsArtifactOpen(true); }}
         activeArtifact={activeArtifact}
-        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+        onToggleSidebar={() => setSidebarOpen(o => !o)}
+        modelInfo={modelInfo}
+        onSwitchModel={handleSwitchModel}
+        onClearChat={handleClearChat}
       />
 
-      {/* Right Artifact Viewer */}
-      {isArtifactViewerOpen && activeArtifact && (
-        <ArtifactViewer
-          artifact={activeArtifact}
-          onClose={() => setIsArtifactViewerOpen(false)}
-        />
+      {/* Theme toggle */}
+      <button
+        className="theme-btn"
+        onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
+        title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+        aria-label="Toggle theme"
+      >
+        {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+      </button>
+
+      {isArtifactOpen && activeArtifact && (
+        <ArtifactViewer artifact={activeArtifact} onClose={() => setIsArtifactOpen(false)} />
       )}
     </div>
   );

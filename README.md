@@ -14,7 +14,7 @@ Built to answer strategic product questions, generate **Ship 30 for 30** long-fo
 - **Out-of-Domain Guardrail:** Rejects questions unrelated to Product Management / Growth with an explicit refusal, preventing hallucinations.
 - **Dual Model Runtime (Local + Cloud):** Seamless runtime toggle between **Local Ollama** (`llama3:latest` default) and Cloud providers (**Anthropic Claude** / **OpenAI**), with zero-failure fallback.
 - **Ship 30 for 30 Essay Skill:** Encodes the 1-3-1 hook rule, high-contrast subheadings, and actionable practitioner takeaways in ~1,250 words.
-- **Native In-App Artifact Viewer:** Renders interactive HTML/CSS checklists and frameworks beside the chat in a sandboxed `iframe` with CSP protection.
+- **Native In-App Artifact Viewer:** Renders interactive HTML/CSS checklists and frameworks beside the chat in a sandboxed `iframe` (`sandbox="allow-forms"`, `referrerPolicy="no-referrer"`) — JS execution is blocked; interactive inputs and checkboxes work.
 - **PostgreSQL & SQLite Persistence:** Multi-session conversation management with independent context isolation.
 - **One-Command Deployment:** Packaged with `docker-compose.yml` for instant zero-friction startup.
 
@@ -98,8 +98,8 @@ The easiest way to run the entire system (PostgreSQL, FastAPI Backend, React Fro
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/<your-username>/lenny-growth-assistant.git
-cd lenny-growth-assistant
+git clone https://github.com/NikithaKunapareddy/Oogway-Labs.git
+cd Oogway-Labs
 
 # 2. Copy the environment configuration
 cp .env.example .env
@@ -165,17 +165,18 @@ Review `.env.example` for all configurable parameters:
 | `OPENAI_API_KEY` | *(optional)* | OpenAI API Key for GPT-4o |
 | `RAG_GROUNDING_THRESHOLD` | `0.085` | Minimum cosine similarity threshold for grounding |
 | `RAG_TOP_K` | `4` | Number of transcript chunks injected into the prompt |
+| `ALLOWED_ORIGINS` | *(blank = localhost in dev)* | Comma-separated allowed CORS origins for production |
 
 ---
 
 ## Testing & Quality Assurance
 
 ### Automated Test Suite
-The project includes automated tests for API endpoints, session persistence, RAG hybrid search, intent routing, and security sanitization:
+The project includes automated tests for API endpoints, session persistence, RAG hybrid search, intent routing, and security sanitization. Tests use an isolated in-memory SQLite database via `conftest.py`:
 
 ```bash
-# Run the complete test suite
-python -m pytest -v backend/tests/
+# Run from the repository root
+python -m pytest -v
 ```
 
 **Results:**

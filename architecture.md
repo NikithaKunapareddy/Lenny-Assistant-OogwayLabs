@@ -196,10 +196,11 @@ flowchart TD
     DB --> ClientApp["Frontend React Client"]
 
     subgraph Defense2 ["Layer 2: Browser Isolated Sandbox"]
-        ClientApp --> IFrame["&lt;iframe sandbox='allow-scripts'&gt;"]
+        ClientApp --> IFrame["&lt;iframe sandbox='allow-forms'&gt;"]
         IFrame --> Sec1["Null Origin Enforcement<br/>(No allow-same-origin: cannot access parent DOM)"]
         IFrame --> Sec2["Credential Isolation<br/>(Zero access to cookies, JWTs, or localStorage)"]
-        IFrame --> Sec3["CSP: default-src 'none'; style-src 'unsafe-inline'"]
+        IFrame --> Sec3["Script Execution Blocked<br/>(allow-forms only: checkboxes work, JS does not run)"]
+        IFrame --> Sec4["referrerPolicy=no-referrer<br/>(No origin leakage to external requests)"]
     end
 ```
 
@@ -213,3 +214,14 @@ The system abstracts LLMs behind a unified `BaseLLM` interface:
 - **Cloud Clients (`cloud`):** Anthropic Claude (`claude-3-5-sonnet`) and OpenAI (`gpt-4o`).
 - **Grounded Engine (`mock`):** Built-in deterministic fallback engine that synthesizes answers from retrieved chunks without requiring external GPU or API keys.
 - **Failover Behavior:** If Ollama or cloud providers fail (timeout, connection refused, missing key), the system falls back gracefully to the Grounded Engine rather than returning a 500 error.
+
+---
+
+## 7. Streaming Architecture & Design Trade-off
+
+The `/api/chat/stream` endpoint implements **simulated SSE streaming**: it waits for the full LLM response, then word-splits it and emits tokens at 12ms intervals. The frontend uses the non-streaming `/api/chat` endpoint and shows an animated "searching transcripts..." state during inference.
+
+**Why simulated instead of true streaming:**
+- Local Ollama models (`llama3.2:3b` on CPU) have ~2–15 second generation latency. True token-by-token SSE streaming requires async generators threaded through FastAPI's `StreamingResponse`, which works fine with Ollama's native streaming API — but combining this with synchronous SQLAlchemy session commits (for message persistence) creates complex async/sync boundary issues that would require a full async SQLAlchemy migration.
+- **Trade-off documented:** The simulated streaming provides equivalent UX (progressive display) at the cost of true first-token latency feedback. For a production V2, migrating to `asyncpg` + `sqlalchemy[asyncio]` would enable true streaming with persistence.
+

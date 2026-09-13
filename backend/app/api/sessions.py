@@ -110,3 +110,56 @@ def delete_session(session_id: str, db: Session = Depends(get_db)):
     db.delete(session)
     db.commit()
     return None
+
+class RenameSessionRequest(BaseModel):
+    title: str
+
+@router.patch("/{session_id}")
+def rename_session(session_id: str, req: RenameSessionRequest, db: Session = Depends(get_db)):
+    session = db.query(DbSession).filter(DbSession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
+    session.title = req.title.strip() or session.title
+    session.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    db.refresh(session)
+    return {"id": session.id, "title": session.title, "updated_at": session.updated_at}
+
+class SummarizeSessionRequest(BaseModel):
+    model_provider: Optional[str] = None
+
+@router.post("/{session_id}/summarize")
+def summarize_session(session_id: str, req: SummarizeSessionRequest, db: Session = Depends(get_db)):
+    import logging
+    logger = logging.getLogger("lenny_assistant")
+    session = db.query(DbSession).filter(DbSession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
+    
+    if len(session.messages) == 0:
+        return {"summary": "No messages to summarize yet."}
+        
+    history = [
+        {"role": m.role, "content": m.content}
+        for m in sorted(session.messages, key=lambda x: x.created_at)
+    ]
+    
+    from app.llm.factory import llm_manager
+    try:
+        client = llm_manager.get_client(req.model_provider or session.model_provider)
+        prompt = "Here is the chat history:\n\n"
+        for m in history:
+            prompt += f"{m['role'].upper()}: {m['content']}\n"
+        prompt += "\nPlease provide a concise, insightful summary of this entire conversation in 3-4 bullet points."
+        
+        # We don't route it through the RAG orchestrator because it's a metadata task, not a domain query
+        summary_text = client.generate(
+            prompt=prompt,
+            system_prompt="You are a helpful assistant summarizing a conversation. Be very concise and insightful.",
+            temperature=0.3,
+            max_tokens=300
+        )
+        return {"summary": summary_text}
+    except Exception as e:
+        logger.error(f"Summarize error: {e}")
+        return {"summary": "Failed to generate summary. Please try again."}

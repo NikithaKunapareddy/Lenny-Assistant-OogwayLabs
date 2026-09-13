@@ -1,4 +1,5 @@
 import json
+import logging
 import asyncio
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import StreamingResponse
@@ -12,6 +13,8 @@ from app.core.models_db import Session as DbSession, Message, Artifact
 from app.agent.orchestrator import agent_orchestrator
 from app.llm.factory import llm_manager
 from app.core.config import settings
+
+logger = logging.getLogger("lenny_assistant")
 
 router = APIRouter(prefix="/chat", tags=["Chat"])
 
@@ -86,7 +89,7 @@ def send_chat_message(req: ChatRequest, db: Session = Depends(get_db)):
             model_provider_override=req.model_provider or session.model_provider
         )
     except Exception as e:
-        print(f"[!] Error in agent execution: {e}. Falling back gracefully to Grounded Engine.")
+        logger.error(f"agent_error session={session.id} error={str(e)}, falling back to Grounded Engine")
         try:
             agent_result = agent_orchestrator.execute(
                 query=req.message,

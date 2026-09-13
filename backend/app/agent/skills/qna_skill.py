@@ -14,8 +14,17 @@ class QnASkill:
         conversation_history: Optional[List[Dict[str, str]]] = None,
         guest_filter: Optional[str] = None
     ) -> Dict[str, Any]:
+        # If the query is vague (short, no domain keywords), enrich it with
+        # context from the last substantive exchange to handle follow-up questions
+        enriched_query = query
+        if conversation_history and len(query.split()) < 12:
+            for m in reversed(conversation_history):
+                if m["role"] == "user" and len(m["content"].split()) > 5:
+                    enriched_query = f"{m['content']} {query}"
+                    break
+
         # Search knowledge base (top_k=2 with concise context for fast CPU inference)
-        search_res = retriever.search(query, top_k=2, threshold=self.threshold, guest_filter=guest_filter)
+        search_res = retriever.search(enriched_query, top_k=2, threshold=self.threshold, guest_filter=guest_filter)
 
         if not search_res["is_grounded"]:
             return {

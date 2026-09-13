@@ -47,7 +47,7 @@
 
 ### 2.3 Key Risks & Mitigation Strategies
 1. **Model Hallucination:** Mitigated by a hybrid TF-IDF + keyword vector retriever and a strict domain guardrail. Queries with zero domain keyword overlap are refused immediately.
-2. **Untrusted HTML Execution:** Mitigated via defense-in-depth: backend regex sanitization, frontend DOMPurify, and sandboxed `iframe` rendering with `sandbox="allow-scripts"` and strict CSP.
+2. **Untrusted HTML Execution:** Mitigated via defense-in-depth: backend regex sanitization strips `<script>` tags, event handlers (`onclick`, `onerror`), and `javascript:` URIs before persistence. The frontend renders artifacts inside `<iframe sandbox="allow-forms" referrerPolicy="no-referrer">` — this permits interactive form elements (checkboxes) while blocking all script execution, parent DOM access, cookie access, and origin leakage.
 3. **Local LLM Latency & Availability:** Mitigated by runtime model switcher with automated fallback to the internal Grounded Engine if Ollama is unreachable.
 
 ---
