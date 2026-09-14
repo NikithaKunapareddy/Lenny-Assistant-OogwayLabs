@@ -12,11 +12,13 @@ INDEX_PATH = os.path.join(RAG_DIR, "tfidf_index.pkl")
 # Core product & growth domain lexicon for Lenny's Podcast
 DOMAIN_KEYWORDS = {
     "growth", "product", "retention", "activation", "pmf", "churn", "pricing",
-    "onboarding", "metric", "saas", "customer", "team", "engineer", "designer",
+    "onboarding", "metric", "saas", "customer", "customers", "team", "engineer", "designer",
     "roadmap", "user", "reforge", "funnel", "loop", "experiment", "b2b", "plg",
     "interview", "podcast", "lenny", "monetization", "acquisition", "distribution",
     "strategy", "culture", "leadership", "feedback", "okr", "market", "hiring",
-    "amplitude", "miro", "dropbox", "figma", "pinterest", "netflix", "slack", "stripe"
+    "amplitude", "miro", "dropbox", "figma", "pinterest", "netflix", "slack", "stripe",
+    "startup", "startups", "founder", "founders", "icp", "ideal", "persona", "segmentation",
+    "sales", "gtm", "audience", "positioning", "scale", "launch", "mvp", "validation"
 }
 
 class LennyRetriever:
@@ -53,7 +55,7 @@ class LennyRetriever:
         self,
         query: str,
         top_k: int = 5,
-        threshold: float = 0.085,
+        threshold: float = 0.05,
         guest_filter: Optional[str] = None
     ) -> Dict[str, Any]:
         """
@@ -75,21 +77,15 @@ class LennyRetriever:
         has_domain_term = bool(query_words.intersection(DOMAIN_KEYWORDS))
         has_guest_name = any(c["guest"].lower() in query_lower for c in self.chunks[:50])
 
-        if not has_domain_term and not has_guest_name:
-            # Out-of-domain query (e.g. nuclear reactor, cooking recipes)
-            return {
-                "query": query,
-                "top_score": 0.0,
-                "is_grounded": False,
-                "total_candidates": 0,
-                "results": []
-            }
-
         # Vector search
         q_vec = self.vectorizer.transform([query])
         cos_sims = cosine_similarity(q_vec, self.tfidf_matrix)[0]
 
-        key_acronyms = ["plg", "pmf", "retention", "activation", "cac", "ltv", "pricing", "dhm", "lno", "reforge"]
+        key_acronyms = [
+            "plg", "pmf", "retention", "activation", "cac", "ltv", "pricing", "dhm", "lno", "reforge",
+            "icp", "ideal customer", "target customer", "target persona", "mvp", "gtm",
+            "product strategy", "strategy stack", "roadmap", "vision", "strategy"
+        ]
 
         scored_results = []
         for i, chunk_id in enumerate(self.chunk_ids):
@@ -108,7 +104,14 @@ class LennyRetriever:
             for acr in key_acronyms:
                 if re.search(r'\b' + re.escape(acr) + r'\b', query_lower):
                     if re.search(r'\b' + re.escape(acr) + r'\b', chunk_content_lower):
-                        boost += 0.03
+                        boost += 0.04
+
+            # Boost if chunk title directly matches key topic in query
+            chunk_title_lower = chunk["title"].lower()
+            for topic_kw in ["product strategy", "strategy stack", "retention", "pricing", "onboarding", "plg", "activation"]:
+                if topic_kw in query_lower and topic_kw in chunk_title_lower:
+                    boost += 0.06
+                    break
 
             if chunk["guest"].lower() in query_lower:
                 boost += 0.08
@@ -116,12 +119,27 @@ class LennyRetriever:
             total_score = base_score + boost
 
             if total_score > 0.02:
+                # Convert timestamp like 00:18:43 into seconds for YouTube deep linking
+                raw_url = chunk.get("youtube_url", "")
+                ts_str = chunk.get("timestamp", "00:00:00")
+                ts_secs = 0
+                try:
+                    parts = [int(p) for p in ts_str.strip().split(":")]
+                    if len(parts) == 3:
+                        ts_secs = parts[0] * 3600 + parts[1] * 60 + parts[2]
+                    elif len(parts) == 2:
+                        ts_secs = parts[0] * 60 + parts[1]
+                except Exception:
+                    ts_secs = 0
+
+                timestamped_url = f"{raw_url}&t={ts_secs}s" if (raw_url and ts_secs > 0) else raw_url
+
                 scored_results.append({
                     "id": chunk["id"],
                     "guest": chunk["guest"],
                     "title": chunk["title"],
-                    "timestamp": chunk["timestamp"],
-                    "youtube_url": chunk.get("youtube_url", ""),
+                    "timestamp": ts_str,
+                    "youtube_url": timestamped_url,
                     "speaker": chunk.get("primary_speaker", chunk["guest"]),
                     "content": chunk["content"],
                     "score": round(total_score, 4),
@@ -129,7 +147,27 @@ class LennyRetriever:
                 })
 
         scored_results.sort(key=lambda x: x["score"], reverse=True)
-        top_results = scored_results[:top_k]
+
+        # Select top results with guest/episode diversity (strictly 1 per guest) so each source is a different video & guest
+        top_results = []
+        guest_counts = {}
+        max_per_guest = 1
+
+        for r in scored_results:
+            g = r["guest"]
+            if guest_counts.get(g, 0) < max_per_guest:
+                top_results.append(r)
+                guest_counts[g] = guest_counts.get(g, 0) + 1
+                if len(top_results) == top_k:
+                    break
+
+        # If not enough diverse candidates, fill remaining slots
+        if len(top_results) < top_k:
+            for r in scored_results:
+                if r not in top_results:
+                    top_results.append(r)
+                    if len(top_results) == top_k:
+                        break
 
         top_score = top_results[0]["score"] if top_results else 0.0
         is_grounded = top_score >= threshold
