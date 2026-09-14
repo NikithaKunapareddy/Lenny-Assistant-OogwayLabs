@@ -58,7 +58,7 @@ graph TD
         S3 --> RAG
     end
 
-    subgraph Storage ["Persistence Layer (PostgreSQL / SQLite)"]
+    subgraph Storage ["Persistence Layer (PostgreSQL - Supabase / Railway / Docker)"]
         DB[("Database")]
         T1["sessions (Chat Context)"]
         T2["messages (Citations & Telemetry)"]
@@ -89,7 +89,7 @@ The database models are implemented using standard SQLAlchemy 2.0 declarative ma
 CREATE TABLE sessions (
     id VARCHAR(64) PRIMARY KEY,
     title VARCHAR(255) NOT NULL,
-    model_provider VARCHAR(64) NOT NULL DEFAULT 'ollama',
+    model_provider VARCHAR(64) NOT NULL DEFAULT 'mock',
     model_name VARCHAR(128) NOT NULL DEFAULT 'llama3:latest',
     session_metadata JSON DEFAULT '{}',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,

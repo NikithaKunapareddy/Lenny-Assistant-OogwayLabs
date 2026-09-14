@@ -99,8 +99,8 @@ The easiest way to run the entire system (PostgreSQL, FastAPI Backend, React Fro
 
 ```bash
 # 1. Clone the repository
-git clone https://github.com/NikithaKunapareddy/Oogway-Labs.git
-cd Oogway-Labs
+git clone https://github.com/NikithaKunapareddy/Lenny-Assistant.git
+cd Lenny-Assistant
 
 # 2. Copy the environment configuration
 cp .env.example .env
@@ -138,7 +138,7 @@ python -m pip install -r requirements.txt
 # Run the FastAPI server
 python -m uvicorn app.main:app --reload --port 8000
 ```
-*Note: By default, the backend uses an embedded SQLite database `lenny_assistant.db` for instant zero-config startup.*
+*Note: The backend is configured for cloud-native PostgreSQL (Supabase / Railway / Docker PostgreSQL) with connection pooling and automated session migration.*
 
 ### 3. Start Frontend (React + Vite)
 ```bash
@@ -158,7 +158,7 @@ Review `.env.example` for all configurable parameters:
 | Variable | Default Value | Description |
 | :--- | :--- | :--- |
 | `APP_ENV` | `development` | Application mode (`development` or `production`) |
-| `DATABASE_URL` | `sqlite:///lenny_assistant.db` | Connection string for SQLite or PostgreSQL (Supabase/Railway) |
+| `DATABASE_URL` | `postgresql://...` | Connection string for PostgreSQL (Supabase, Railway, or Docker) |
 | `DEFAULT_MODEL_PROVIDER` | `ollama` | Active default LLM (`ollama`, `anthropic`, `openai`, `mock`) |
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | URL of the local Ollama daemon |
 | `OLLAMA_MODEL` | `llama3:latest` | Local model name in Ollama |
@@ -203,5 +203,5 @@ python -m pytest -v
 - [x] **design.md:** UI/UX principles, 3-pane information architecture, accessibility.
 - [x] **architecture.md:** DB schema, hybrid retrieval pipeline, agent routing, security.
 - [x] **agent-transcripts/:** Documented AI coding iterations, challenges, and corrections.
-- [x] **Automated Tests:** 16/16 passing pytest suite in `backend/tests/`.
+- [x] **Automated Tests:** 17/17 passing pytest suite in `backend/tests/`.
 - [x] **demo_video_script.md:** Timed 2-3 minute webcam recording script and walkthrough.
