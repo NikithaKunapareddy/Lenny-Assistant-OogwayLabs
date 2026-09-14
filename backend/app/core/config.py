@@ -13,11 +13,11 @@ class Settings(BaseSettings):
         f"sqlite:///{os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..', 'lenny_assistant.db'))}"
     )
 
-    # LLM Configuration
-    DEFAULT_MODEL_PROVIDER: str = os.getenv("DEFAULT_MODEL_PROVIDER", "ollama")
+    # LLM Configuration: Default to 'mock' for instant (<2s) responses, toggleable to 'ollama' / 'openai' / 'anthropic'
+    DEFAULT_MODEL_PROVIDER: str = os.getenv("DEFAULT_MODEL_PROVIDER", "mock")
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
-    OLLAMA_TIMEOUT: int = int(os.getenv("OLLAMA_TIMEOUT", "180"))
+    OLLAMA_TIMEOUT: int = int(os.getenv("OLLAMA_TIMEOUT", "60"))
 
     # CORS: comma-separated origins for production (e.g. "https://myapp.com,https://www.myapp.com")
     ALLOWED_ORIGINS: str = os.getenv("ALLOWED_ORIGINS", "")

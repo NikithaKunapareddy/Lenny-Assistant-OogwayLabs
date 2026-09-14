@@ -53,7 +53,7 @@ class MockGroundedClient(BaseLLM):
         text = self.generate(prompt, system_prompt, temperature, max_tokens)
         chunks = re.findall(r'\S+\s*', text)
         for chunk in chunks:
-            time.sleep(0.008)
+            time.sleep(0.001)
             yield chunk
 
     def _extract_user_query(self, prompt: str) -> str:
@@ -69,6 +69,29 @@ class MockGroundedClient(BaseLLM):
 
     def _generate_grounded_qna(self, prompt: str) -> str:
         query = self._extract_user_query(prompt).lower()
+
+        # 1. 40% Product-Market Fit Survey (Sean Ellis)
+        if any(term in query for term in ["40%", "pmf survey", "sean ellis", "product-market fit survey", "calculate and apply"]):
+            return (
+                "Based on **Sean Ellis's** (author of *Hacking Growth*) masterclass on Lenny's Podcast, here is how to calculate and apply the **40% Product-Market Fit (PMF) Survey**:\n\n"
+                "### 1. The Core Survey Question\n"
+                "Survey users who have used your product at least twice in the last two weeks:\n\n"
+                "> *\"How would you feel if you could no longer use this product?\"*\n"
+                "- **A) Very disappointed**\n"
+                "- **B) Somewhat disappointed**\n"
+                "- **C) Not disappointed (it's really not that useful)**\n"
+                "- **D) N/A – I no longer use it**\n\n"
+                "### 2. How to Calculate the PMF Score\n"
+                "$$\\text{PMF Score (\\%)} = \\left( \\frac{\\text{Count of 'Very Disappointed' Responses}}{\\text{Total Valid Responses}} \\right) \\times 100$$\n\n"
+                "### 3. Interpreting the Benchmark\n"
+                "- **>= 40% 'Very Disappointed':** **You have Product-Market Fit.** Companies above 40% (e.g., Slack, Superhuman, Dropbox) experience sustainable organic growth and compounding word-of-mouth. You can now responsibly invest in scaling paid acquisition.\n"
+                "- **< 40% 'Very Disappointed':** **Do NOT scale acquisition.** You are pouring money into a leaky bucket. Scaling now burns capital and damages brand reputation permanently.\n\n"
+                "### 4. How to Apply the Results (The 3-Step Protocol)\n"
+                "1. **Isolate Your Super-Users:** Filter your dataset to focus exclusively on respondents who answered *'Very Disappointed'*. This cohort defines your true Ideal Customer Profile (ICP).\n"
+                "2. **Double Down on What They Love:** Analyze their qualitative feedback on *'What is the primary benefit you receive from this product?'*. Protect and enhance this core capability in your roadmap.\n"
+                "3. **Convert the 'Somewhat Disappointed' Cohort:** Ask those who answered *'Somewhat disappointed'* what would turn them into *'Very disappointed'*. Only address objections from users whose use cases align with your super-users; ignore everyone else.\n\n"
+                "> *\"If fewer than 40% of your users say they would be very disappointed without your product, stop scaling growth immediately. Fix product-market fit first.\"* — **Sean Ellis**"
+            )
 
         # 1. Onboarding & First Mile
         if any(term in query for term in ["onboarding", "first mile", "activation", "aha moment", "sign-up", "signup"]):
