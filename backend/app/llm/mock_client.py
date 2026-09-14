@@ -24,18 +24,20 @@ class MockGroundedClient(BaseLLM):
     ) -> str:
         sys_p = (system_prompt or "").lower()
 
-        # Check system prompt first to avoid spurious keyword matches in retrieved context
+        # Check system prompt first to determine intent accurately
         if "ship 30" in sys_p or "1,250 words" in sys_p:
             return self._generate_ship30_essay(prompt)
 
         if "artifact" in sys_p or "html code block" in sys_p:
             return self._generate_artifact(prompt)
 
-        prompt_lower = prompt.lower()
-        if any(w in prompt_lower for w in ["essay", "ship 30", "article"]):
+        user_query = self._extract_user_query(prompt).lower()
+
+        # Only check the current user query (NEVER prompt_lower which contains old conversation history)
+        if any(w in user_query for w in ["write an essay", "write an article", "write a ship 30", "1250 words", "ship 30 for 30"]):
             return self._generate_ship30_essay(prompt)
 
-        if any(w in prompt_lower for w in ["generate a framework", "create a framework", "html checklist"]):
+        if any(w in user_query for w in ["generate a framework", "create a framework", "html checklist", "create an artifact"]):
             return self._generate_artifact(prompt)
 
         # Default Grounded Q&A response
@@ -140,7 +142,21 @@ class MockGroundedClient(BaseLLM):
                 "Price should scale with the customer's perceived value (e.g., active users, messages sent, or revenue processed) rather than flat seat-based limits."
             )
 
-        # 5. Default: Retention Architecture & Four Fits
+        # 5. Scaling Mistakes & Growth Pitfalls
+        elif any(term in query for term in ["scaling", "scale", "mistake", "mistakes", "trap", "pitfall", "fail"]):
+            return (
+                "Based on Lenny's Podcast conversations with seasoned growth leaders—particularly **Elena Verna** (Amplitude, Miro, Dropbox) and **Casey Winters** (Pinterest, Eventbrite)—here are the most critical mistakes companies make when scaling a product:\n\n"
+                "### 1. Scaling Acquisition Before Retention Flattens (The Leaky Bucket Trap)\n"
+                "As **Elena Verna** warns in her episode *'10 Growth Tactics That Never Work'*, the #1 fatal error is pouring marketing dollars into top-of-funnel acquisition when retention cohorts are still trending toward zero. Scaling a leaky product burns capital and damages brand reputation without creating durable enterprise value.\n\n"
+                "### 2. Relying on Linear Funnels Instead of Compounding Loops\n"
+                "**Casey Winters** emphasizes that companies stall when they treat growth as a linear pipe (Spend $X -> Get Y users). High-scale winners transition early to self-reinforcing loops (viral collaboration, user-generated SEO, or product usage data) where the output of one user cycle directly powers the next.\n\n"
+                "### 3. Feature Factory Syndrome & Copying Competitors\n"
+                "When growth plateaus, teams reflexively ship dozens of minor features requested by vocal edge users. **Ravi Mehta** and **Elena Verna** stress that feature volume is not a strategy. High-performing scaling teams focus on 2–3 defensible core pillars and ruthlessly say 'No' to non-essential roadmap bloat.\n\n"
+                "### 4. Premature Organizational Specialization\n"
+                "As **Fareed Mosavat** (Reforge, Slack) points out, startups often over-hire specialized growth, lifecycle, and paid acquisition roles before the core product engine has achieved repeatable product-market fit."
+            )
+
+        # 6. Default: Retention Architecture & Four Fits
         else:
             return (
                 "Based on discussions from Lenny's Podcast, here are the foundational insights from product and growth leaders:\n\n"
