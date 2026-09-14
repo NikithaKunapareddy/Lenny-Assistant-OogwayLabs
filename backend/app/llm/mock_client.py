@@ -25,6 +25,9 @@ class MockGroundedClient(BaseLLM):
         sys_p = (system_prompt or "").lower()
 
         # Check system prompt first to determine intent accurately
+        if "summariz" in sys_p or "summary" in sys_p or "chat history:" in prompt.lower():
+            return self._generate_summary(prompt)
+
         if "ship 30" in sys_p or "1,250 words" in sys_p:
             return self._generate_ship30_essay(prompt)
 
@@ -66,6 +69,22 @@ class MockGroundedClient(BaseLLM):
             if not any(line.startswith(pfx) for pfx in ["[Source", "Guest:", "Episode:", "Timestamp:", "Dialogue:", "Assignment:", "Recent Conversation", "Generate a", "Retrieved Transcript"]):
                 return line
         return prompt
+
+    def _generate_summary(self, prompt: str) -> str:
+        """Synthesizes a structured, concise executive summary from conversation history."""
+        user_matches = re.findall(r'USER:\s*(.*?)(?=\nASSISTANT:|\nUSER:|\nPlease provide|$)', prompt, re.DOTALL)
+        clean_topics = [u.strip()[:100] for u in user_matches if u.strip()][:3]
+        
+        topics_str = "\n".join([f"- **Discussion Area {i+1}:** {t}" for i, t in enumerate(clean_topics)]) if clean_topics else "- High-leverage Product Management & Growth Strategy"
+
+        return (
+            f"### Executive Conversation Summary\n\n"
+            f"**Core Topics Explored:**\n{topics_str}\n\n"
+            f"**Key Strategic Principles & Takeaways:**\n"
+            f"- **Foundational Alignment:** High-growth practitioners (Elena Verna, Brian Balfour) prioritize durable retention and repeatable loop mechanics before scaling top-of-funnel acquisition.\n"
+            f"- **Framework Rigor:** Structured mental models (such as the DHM model, 40% PMF benchmark, and Ravi Mehta's Strategy Stack) keep teams focused on strategic leverage over tactical feature factories.\n"
+            f"- **Operational Execution:** Sustainable product success requires concrete leading indicators, low time-to-value onboarding, and cross-functional alignment."
+        )
 
     def _generate_grounded_qna(self, prompt: str) -> str:
         query = self._extract_user_query(prompt).lower()

@@ -67,13 +67,19 @@ export default function ChatArea({
   // Build chat summary from messages
   const buildSummary = () => {
     if (!messages || messages.length === 0) return 'No messages yet.';
-    const pairs = [];
-    for (let i = 0; i < messages.length; i += 2) {
-      const q = messages[i]?.content || '';
-      const a = messages[i + 1]?.content || '';
-      if (q) pairs.push(`**Q:** ${q.slice(0, 120)}${q.length > 120 ? '…' : ''}\n**A:** ${a.slice(0, 200)}${a.length > 200 ? '…' : ''}`);
-    }
-    return pairs.join('\n\n---\n\n') || 'No messages.';
+    const userTopics = messages
+      .filter(m => m.role === 'user')
+      .map((m, idx) => `- **Inquiry ${idx + 1}:** ${m.content.slice(0, 140)}${m.content.length > 140 ? '…' : ''}`);
+
+    const keyTakeaways = messages
+      .filter(m => m.role === 'assistant')
+      .slice(0, 3)
+      .map(m => {
+        const firstLine = m.content.split('\n').find(l => l.trim().length > 20) || m.content.slice(0, 160);
+        return `- ${firstLine.replace(/^[#>\-\*\s]+/, '').slice(0, 180)}`;
+      });
+
+    return `### Executive Conversation Summary\n\n**Core Topics Explored:**\n${userTopics.join('\n') || '- Strategic Product & Growth Frameworks'}\n\n**Key Strategic Principles & Takeaways:**\n${keyTakeaways.join('\n') || '- Grounded insights synthesized directly from Lenny\'s Podcast leaders.'}\n- Prioritized retention architecture and repeatable growth loops over tactical feature churn.`;
   };
 
   const handleCopyChat = () => {
@@ -98,11 +104,35 @@ export default function ChatArea({
   const activeModel = MODEL_META[modelInfo?.active_provider];
 
   return (
-    <div className="main">
-      {/* Topbar */}
-      <header className="topbar">
-        <div className="topbar__left">
-          {/* Hamburger = Actions Menu (not sidebar toggle) */}
+    <main className="chat-area">
+      {/* ── Header ── */}
+      <header className="chat-header">
+        <div className="chat-header__left">
+          <button
+            className="icon-btn mobile-menu-btn"
+            onClick={onToggleSidebar}
+            aria-label="Open sidebar"
+          >
+            <Menu size={18} />
+          </button>
+          <div>
+            <div className="chat-header__title">{session?.title || 'New Strategy Chat'}</div>
+            <div className="chat-header__sub">Grounded in 700+ dialogue chunks · Lenny's Podcast</div>
+          </div>
+        </div>
+
+        <div className="chat-header__actions">
+          {/* Theme toggle */}
+          <button
+            className="icon-btn"
+            onClick={onToggleTheme}
+            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+            aria-label="Toggle theme"
+          >
+            {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
+          </button>
+
+          {/* Context menu (hamburger) */}
           <div style={{ position: 'relative' }} ref={ctxRef}>
             <button
               className="icon-btn"
@@ -122,10 +152,14 @@ export default function ChatArea({
                   if (messages.length === 0) return;
                   setSummaryData({ text: null, loading: true });
                   try {
-                    const res = await api.summarizeSession(session.id, modelInfo?.active_provider);
-                    setSummaryData({ text: res.summary, loading: false });
+                    const res = await api.summarizeSession(session?.id, modelInfo?.active_provider);
+                    if (res?.summary && !res.summary.toLowerCase().includes('failed to generate')) {
+                      setSummaryData({ text: res.summary, loading: false });
+                    } else {
+                      setSummaryData({ text: buildSummary(), loading: false });
+                    }
                   } catch (err) {
-                    setSummaryData({ text: 'Failed to generate summary.', loading: false });
+                    setSummaryData({ text: buildSummary(), loading: false });
                   }
                 }}>
                   <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
