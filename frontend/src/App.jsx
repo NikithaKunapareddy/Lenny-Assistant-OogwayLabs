@@ -5,7 +5,6 @@ import Sidebar from './components/Sidebar';
 import ChatArea from './components/ChatArea';
 import ArtifactViewer from './components/ArtifactViewer';
 import { api } from './services/api';
-import { Sun, Moon } from 'lucide-react';
 
 export default function App() {
   const [sessions, setSessions] = useState([]);
@@ -146,20 +145,16 @@ export default function App() {
         modelInfo={modelInfo}
         onSwitchModel={handleSwitchModel}
         onClearChat={handleClearChat}
+        theme={theme}
+        onToggleTheme={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
       />
 
-      {/* Theme toggle */}
-      <button
-        className="theme-btn"
-        onClick={() => setTheme(t => t === 'dark' ? 'light' : 'dark')}
-        title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-        aria-label="Toggle theme"
-      >
-        {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
-      </button>
-
       {isArtifactOpen && activeArtifact && (
-        <ArtifactViewer artifact={activeArtifact} onClose={() => setIsArtifactOpen(false)} />
+        <ArtifactViewer
+          artifact={activeArtifact}
+          appTheme={theme}
+          onClose={() => setIsArtifactOpen(false)}
+        />
       )}
     </div>
   );
