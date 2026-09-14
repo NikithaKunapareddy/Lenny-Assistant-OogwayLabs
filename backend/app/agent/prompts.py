@@ -14,6 +14,7 @@ CRITICAL OPERATIONAL RULES:
 4. TONE & STRUCTURE:
    - Professional, high-agency, executive-ready, and analytical.
    - Use structured Markdown: bold key principles, bullet points for tactical steps, and blockquotes for direct quotes.
+   - Always conclude all sentences, bullet points, and actionable takeaways completely without trailing off.
 """
 
 SHIP30_ESSAY_SYSTEM_PROMPT = """You are a master digital writer trained in the Ship 30 for 30 writing methodology, writing as The Lenny Growth Assistant.
