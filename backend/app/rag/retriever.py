@@ -84,7 +84,9 @@ class LennyRetriever:
         key_acronyms = [
             "plg", "pmf", "retention", "activation", "cac", "ltv", "pricing", "dhm", "lno", "reforge",
             "icp", "ideal customer", "target customer", "target persona", "mvp", "gtm",
-            "product strategy", "strategy stack", "roadmap", "vision", "strategy"
+            "product strategy", "strategy stack", "roadmap", "vision", "strategy",
+            "40%", "40 percent", "sean ellis", "pmf survey", "product-market fit", "product market fit",
+            "first mile", "aha moment", "willingness to pay"
         ]
 
         scored_results = []
@@ -106,9 +108,36 @@ class LennyRetriever:
                     if re.search(r'\b' + re.escape(acr) + r'\b', chunk_content_lower):
                         boost += 0.04
 
+            # High-signal phrase boosting for specific PM/growth concepts
+            if any(k in query_lower for k in ["40%", "40 percent", "pmf", "product-market fit", "product market fit", "sean ellis", "survey"]):
+                if "very disappointed" in chunk_content_lower or "40%" in chunk_content_lower or "no longer use this product" in chunk_content_lower:
+                    boost += 0.12
+                if "sean ellis test" in chunk_content_lower or "leading indicator of product market fit" in chunk_content_lower:
+                    boost += 0.10
+
+            if any(k in query_lower for k in ["pricing", "monetization", "price", "packaging"]):
+                if "willingness to pay" in chunk_content_lower or "monetizing innovation" in chunk_content_lower:
+                    boost += 0.10
+
+            if any(k in query_lower for k in ["onboarding", "first mile", "activation"]):
+                if "first mile" in chunk_content_lower or "aha moment" in chunk_content_lower or "first 30 seconds" in chunk_content_lower:
+                    boost += 0.10
+
+            if any(k in query_lower for k in ["strategy stack", "product strategy", "ravi mehta"]):
+                if "strategy stack" in chunk_content_lower or "roadmap is not strategy" in chunk_content_lower:
+                    boost += 0.10
+
+            if any(k in query_lower for k in ["dhm", "biddle", "delight"]):
+                if "dhm" in chunk_content_lower or "delight customers in hard-to-copy" in chunk_content_lower:
+                    boost += 0.12
+
+            if any(k in query_lower for k in ["lno", "shreyas"]):
+                if "lno" in chunk_content_lower or "leverage, neutral" in chunk_content_lower:
+                    boost += 0.12
+
             # Boost if chunk title directly matches key topic in query
             chunk_title_lower = chunk["title"].lower()
-            for topic_kw in ["product strategy", "strategy stack", "retention", "pricing", "onboarding", "plg", "activation"]:
+            for topic_kw in ["product strategy", "strategy stack", "retention", "pricing", "onboarding", "plg", "activation", "pmf", "product-market fit", "survey", "sean ellis"]:
                 if topic_kw in query_lower and topic_kw in chunk_title_lower:
                     boost += 0.06
                     break
@@ -170,7 +199,7 @@ class LennyRetriever:
                         break
 
         top_score = top_results[0]["score"] if top_results else 0.0
-        is_grounded = top_score >= threshold
+        is_grounded = (top_score >= threshold) and (has_domain_term or has_guest_name)
 
         return {
             "query": query,

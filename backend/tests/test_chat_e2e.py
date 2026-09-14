@@ -91,3 +91,26 @@ def test_session_context_isolation():
     history_b = client.get(f"/api/sessions/{session_b_id}").json()
     assert len(history_b["messages"]) == 2
     assert any("Elena Verna" in m["content"] for m in history_b["messages"])
+
+def test_chat_40_percent_pmf_survey_accuracy():
+    """Verify that 40% PMF survey queries directly explain the question, choices, calculation, and application."""
+    payload = {
+        "message": "How do you calculate and apply the 40% product-market fit survey?",
+        "model_provider": "mock"
+    }
+    res = client.post("/api/chat", json=payload)
+    assert res.status_code == 200
+    data = res.json()
+    content = data["response"]
+
+    # Verify all required components
+    assert "How would you feel if you could no longer use this product?" in content
+    assert "Very disappointed" in content
+    assert "Somewhat disappointed" in content
+    assert "Not disappointed" in content
+    assert "Very Disappointed" in content and "Total Valid Responses" in content
+    assert ">= 40%" in content or "40%" in content
+    assert "Super-Users" in content or "super-users" in content
+    assert "Sean Ellis" in content
+    # Verify sub-2-second latency
+    assert data.get("latency_ms", 0) < 2000

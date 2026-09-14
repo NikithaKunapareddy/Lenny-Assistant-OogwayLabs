@@ -20,10 +20,13 @@ from app.core.models_db import Base
 from app.core.database import get_db
 from app.main import app
 
+from sqlalchemy.pool import StaticPool
+
 # Create a shared in-memory engine for the test session
 _test_engine = create_engine(
     "sqlite:///:memory:",
-    connect_args={"check_same_thread": False}
+    connect_args={"check_same_thread": False},
+    poolclass=StaticPool
 )
 _TestSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=_test_engine)
 
@@ -38,8 +41,10 @@ def override_get_db():
 
 @pytest.fixture(scope="session", autouse=True)
 def setup_test_database():
-    """Create all tables once per test session in the in-memory DB."""
+    """Create all tables once per test session in the in-memory DB and main DB."""
+    from app.core.database import engine as main_engine
     Base.metadata.create_all(bind=_test_engine)
+    Base.metadata.create_all(bind=main_engine)
     app.dependency_overrides[get_db] = override_get_db
     yield
     Base.metadata.drop_all(bind=_test_engine)

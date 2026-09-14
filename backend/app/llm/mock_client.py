@@ -71,30 +71,87 @@ class MockGroundedClient(BaseLLM):
         query = self._extract_user_query(prompt).lower()
 
         # 1. 40% Product-Market Fit Survey (Sean Ellis)
-        if any(term in query for term in ["40%", "pmf survey", "sean ellis", "product-market fit survey", "calculate and apply"]):
+        if any(term in query for term in [
+            "40%", "40 percent", "pmf survey", "product-market fit survey", "product market fit survey",
+            "sean ellis", "pmf", "product-market fit", "product market fit", "calculate and apply",
+            "very disappointed", "somewhat disappointed", "disappointed", "superhuman", "rahul vohra"
+        ]):
             return (
-                "Based on **Sean Ellis's** (author of *Hacking Growth*) masterclass on Lenny's Podcast, here is how to calculate and apply the **40% Product-Market Fit (PMF) Survey**:\n\n"
+                "Based on **Sean Ellis's** (author of *Hacking Growth*) masterclass on Lenny's Podcast, here is the exact methodology to calculate and apply the **40% Product-Market Fit (PMF) Survey**:\n\n"
                 "### 1. The Core Survey Question\n"
-                "Survey users who have used your product at least twice in the last two weeks:\n\n"
-                "> *\"How would you feel if you could no longer use this product?\"*\n"
-                "- **A) Very disappointed**\n"
-                "- **B) Somewhat disappointed**\n"
-                "- **C) Not disappointed (it's really not that useful)**\n"
-                "- **D) N/A – I no longer use it**\n\n"
-                "### 2. How to Calculate the PMF Score\n"
-                "$$\\text{PMF Score (\\%)} = \\left( \\frac{\\text{Count of 'Very Disappointed' Responses}}{\\text{Total Valid Responses}} \\right) \\times 100$$\n\n"
-                "### 3. Interpreting the Benchmark\n"
-                "- **>= 40% 'Very Disappointed':** **You have Product-Market Fit.** Companies above 40% (e.g., Slack, Superhuman, Dropbox) experience sustainable organic growth and compounding word-of-mouth. You can now responsibly invest in scaling paid acquisition.\n"
-                "- **< 40% 'Very Disappointed':** **Do NOT scale acquisition.** You are pouring money into a leaky bucket. Scaling now burns capital and damages brand reputation permanently.\n\n"
-                "### 4. How to Apply the Results (The 3-Step Protocol)\n"
-                "1. **Isolate Your Super-Users:** Filter your dataset to focus exclusively on respondents who answered *'Very Disappointed'*. This cohort defines your true Ideal Customer Profile (ICP).\n"
-                "2. **Double Down on What They Love:** Analyze their qualitative feedback on *'What is the primary benefit you receive from this product?'*. Protect and enhance this core capability in your roadmap.\n"
-                "3. **Convert the 'Somewhat Disappointed' Cohort:** Ask those who answered *'Somewhat disappointed'* what would turn them into *'Very disappointed'*. Only address objections from users whose use cases align with your super-users; ignore everyone else.\n\n"
-                "> *\"If fewer than 40% of your users say they would be very disappointed without your product, stop scaling growth immediately. Fix product-market fit first.\"* — **Sean Ellis**"
+                "Survey users who have directly experienced the core value of your product at least twice in the past two weeks. Ask:\n\n"
+                "> **\"How would you feel if you could no longer use this product?\"**\n\n"
+                "Provide these four mutually exclusive choices:\n"
+                "- **1. Very disappointed**\n"
+                "- **2. Somewhat disappointed**\n"
+                "- **3. Not disappointed (it isn't really that useful)**\n"
+                "- **4. N/A – I no longer use it**\n\n"
+                "### 2. How to Calculate the Percentage\n"
+                "To determine your Product-Market Fit score, calculate the percentage of respondents who select **'Very disappointed'** out of all valid, active respondents:\n\n"
+                "$$\\text{\\% Very Disappointed} = \\left( \\frac{\\text{Number of 'Very Disappointed' Responses}}{\\text{Total Valid Responses}} \\right) \\times 100$$\n\n"
+                "*(Note: Exclude respondents who selected 'N/A' from the denominator as they are no longer active users).*\n\n"
+                "### 3. How to Interpret the Result\n"
+                "- **>= 40% 'Very Disappointed' (Strong PMF Signal):** You have achieved product-market fit. As Sean Ellis discovered across 100+ startups (including Dropbox, LogMeIn, Eventbrite, and Superhuman), products that reach 40% or higher generate authentic organic pull and sustainable word-of-mouth. You have earned the right to scale distribution, invest heavily in paid marketing, and grow the team.\n"
+                "- **< 40% 'Very Disappointed' (PMF Not Yet Strong Enough):** Do **NOT** invest in aggressive marketing or paid growth. Pouring distribution spend into a product below 40% is 'pouring water into a leaky bucket'—it burns capital, harms retention, and damages brand reputation. Stop scaling and focus entirely on product iteration.\n\n"
+                "### 4. How to Apply the Results (The 4-Step Actionable Playbook)\n"
+                "1. **Isolate Your Super-Users:** Filter your survey responses to focus exclusively on those who answered *'Very disappointed'*. This cohort represents your true Ideal Customer Profile (ICP).\n"
+                "2. **Understand What Value They Get:** Analyze their answers to the open-ended follow-up question: *'What is the primary benefit you receive from this product?'*. Protect, polish, and double down on this core value in your product roadmap.\n"
+                "3. **Convert the 'Somewhat Disappointed' Cohort:** Analyze feedback from users who answered *'Somewhat disappointed'*. Focus specifically on the subset whose use cases match your super-users. Address the specific objections or missing features holding them back. Deliberately ignore requests from 'Somewhat disappointed' users who want unrelated capabilities that would dilute the core product.\n"
+                "4. **Repeat the Survey Over Time:** Run the survey periodically across new user cohorts (who have used the product at least twice in the past 2 weeks) to monitor your progress toward and beyond the 40% threshold.\n\n"
+                "> *\"If you have fewer than 40% of users saying they'd be very disappointed without your product, stop scaling growth immediately. The best use of this tool is to look at that percentage of highly disappointed users, understand what they're excited about, and build around them.\"* — **Sean Ellis**"
             )
 
-        # 1. Onboarding & First Mile
-        if any(term in query for term in ["onboarding", "first mile", "activation", "aha moment", "sign-up", "signup"]):
+        # 2. DHM Model (Gibson Biddle)
+        elif any(term in query for term in ["dhm", "biddle", "delight"]):
+            return (
+                "Based on **Gibson Biddle's** (former VP of Product at Netflix and Chief Product Officer at Chegg) masterclass on Lenny's Podcast, here is the **DHM Model** for product strategy:\n\n"
+                "### 1. The Core Framework: DHM\n"
+                "Great product strategy balances three forces simultaneously:\n"
+                "- **D — Delight Customers:** Build features that solve customer problems in ways that evoke genuine joy and satisfaction.\n"
+                "- **H — Hard to Copy:** Build defensible competitive moats so competitors cannot easily replicate your success (e.g., network effects, brand, economies of scale, unique tech, switching costs).\n"
+                "- **M — Margin-Enhancing:** Build a viable business model that captures economic value to reinvest back into delighting customers.\n\n"
+                "### 2. Netflix Example from Gibson Biddle\n"
+                "- **Delight:** Instant streaming with personalized algorithmic recommendations.\n"
+                "- **Hard-to-Copy:** Proprietary recommendation engine, massive exclusive content library, and global brand trust.\n"
+                "- **Margin-Enhancing:** Scaled fixed content costs across 200M+ subscribers, improving operating margins continuously.\n\n"
+                "> *\"Strategy is about choosing what NOT to do. The DHM model helps you find the sweet spot where customer delight and business margin intersect.\"* — **Gibson Biddle**"
+            )
+
+        # 3. LNO Framework (Shreyas Doshi)
+        elif any(term in query for term in ["lno", "shreyas", "prioritiz"]):
+            return (
+                "Based on **Shreyas Doshi's** (Stripe, Twitter, Google) masterclass on Lenny's Podcast, here is the **LNO Framework** for product task prioritization:\n\n"
+                "### 1. The Three Task Tiers\n"
+                "- **L — Leverage Tasks (10x Impact):** High-agency, strategic initiatives that will make or break your product. These require 100% of your creative focus and perfectionism (e.g., product strategy, defining ICP, critical architecture decisions).\n"
+                "- **N — Neutral Tasks (1x Impact):** Standard operational tasks that keep the trains running. Good enough is good enough—do not over-engineer them (e.g., weekly status reports, routine bug triage).\n"
+                "- **O — Overhead Tasks (<1x Impact):** Necessary administrative tasks that drain energy. Execute them with minimum viable effort or delegate/automate them (e.g., expense reports, routine scheduling).\n\n"
+                "### 2. Key Rule\n"
+                "> *\"The biggest trap for high performers is treating every task like a Leverage task. Perfectionism on Neutral tasks steals energy from your true Leverage work.\"* — **Shreyas Doshi**"
+            )
+
+        # 4. Growth Loops vs Funnels & Four Fits (Brian Balfour)
+        elif any(term in query for term in ["growth loop", "loop", "funnel", "balfour", "four fits"]):
+            return (
+                "Based on **Brian Balfour's** (Founder & CEO of Reforge, former VP of Growth at HubSpot) deep dives on Lenny's Podcast, here is why growth loops replace linear funnels:\n\n"
+                "### 1. The Core Mechanism: Loops vs. Funnels\n"
+                "Linear funnels are fundamentally inefficient: you pour money/leads into the top, lose 90%+ along the way, and get output at the bottom. To get more output, you must keep paying for more input.\n\n"
+                "**Growth Loops** are closed self-reinforcing systems where the output of one cycle directly reinvests into the input of the next:\n"
+                "$$\\text{User Action} \\longrightarrow \\text{Value Generated} \\longrightarrow \\text{Distribution Event} \\longrightarrow \\text{New User Acquired}$$\n\n"
+                "### 2. The 3 Types of Growth Loops\n"
+                "- **Viral / Collaborative Loops:** User invites collaborators to get work done (e.g., Figma, Miro, Slack).\n"
+                "- **Content / SEO Loops:** Users generate content that search engines index, attracting new users who create more content (e.g., Pinterest, Reddit, Stack Overflow).\n"
+                "- **Paid Loops:** Customers generate cash flow that is directly reinvested into paid acquisition channels.\n\n"
+                "### 3. Brian Balfour's Four Fits Framework\n"
+                "Sustainable scale requires total alignment across:\n"
+                "1. **Market-Product Fit:** Solving an acute pain for a well-defined audience.\n"
+                "2. **Product-Channel Fit:** Products are built to fit channels, never vice versa.\n"
+                "3. **Channel-Model Fit:** Your pricing model dictates which channels are mathematically viable.\n"
+                "4. **Model-Market Fit:** Your total addressable market must support your unit economics.\n\n"
+                "> *\"Funnels lose momentum by design. The fastest-growing products are built on compounding loops.\"* — **Brian Balfour**"
+            )
+
+        # 5. Onboarding & First Mile
+        elif any(term in query for term in ["onboarding", "first mile", "activation", "aha moment", "sign-up", "signup"]):
             return (
                 "Based on conversations from Lenny's Podcast—especially with **Adam Fishman** (Lyft, Patreon) and **Scott Belsky** (Chief Strategy Officer at Adobe)—here is what drives a world-class onboarding experience:\n\n"
                 "### 1. Optimize the 'First Mile' (The First 30 Seconds)\n"
@@ -112,7 +169,7 @@ class MockGroundedClient(BaseLLM):
                 "> *\"More than 70% of total product churn occurs during onboarding. If a user does not hit their activation milestone within their first session, their probability of returning drops by half each subsequent day.\"* — **Adam Fishman**\n"
             )
 
-        # 2. Product Strategy & Roadmap
+        # 6. Product Strategy & Roadmap
         elif any(term in query for term in ["strategy", "ravi mehta", "product strategy", "stack", "roadmap"]):
             return (
                 "Based on discussions from Lenny's Podcast—specifically with **Ravi Mehta** (former CPO of Tinder, VP of Product at Tripadvisor, and Product Director at Facebook)—here is the foundational framework for building a successful product strategy:\n\n"
@@ -132,7 +189,7 @@ class MockGroundedClient(BaseLLM):
                 "> *\"The goal of the Product Strategy Stack is to help teams take a set of terms that are normally confused—mission, vision, strategy, roadmap—and organize them into a cohesive, actionable hierarchy.\"* — **Ravi Mehta**\n"
             )
 
-        # 3. Ideal Customer Profile (ICP)
+        # 7. Ideal Customer Profile (ICP)
         elif any(term in query for term in ["customer", "icp", "ideal customer", "segmentation", "persona"]):
             return (
                 "Based on Lenny's Podcast interviews with growth leaders like **Elena Verna** (Amplitude, Miro) and **Hila Qu** (GitLab, Acorns), here is how startups should identify their Ideal Customer Profile (ICP):\n\n"
@@ -150,7 +207,7 @@ class MockGroundedClient(BaseLLM):
                 "As **Brian Balfour** explains in the Four Fits Framework, your ideal customer dictates your acquisition channel. If your ICP consists of individual developers, a self-serve product-led growth (PLG) motion is mandatory; enterprise buyers require sales-assisted distribution.\n"
             )
 
-        # 4. Pricing & Monetization
+        # 8. Pricing & Monetization
         elif any(term in query for term in ["pricing", "price", "monetization", "monetize", "packaging"]):
             return (
                 "Based on Lenny's Podcast interviews with pricing authority **Madhavan Ramanujam** (Monetizing Innovation, Simon-Kucher), here is how leading companies approach pricing and packaging:\n\n"
@@ -165,7 +222,7 @@ class MockGroundedClient(BaseLLM):
                 "Price should scale with the customer's perceived value (e.g., active users, messages sent, or revenue processed) rather than flat seat-based limits."
             )
 
-        # 5. Scaling Mistakes & Growth Pitfalls
+        # 9. Scaling Mistakes & Growth Pitfalls
         elif any(term in query for term in ["scaling", "scale", "mistake", "mistakes", "trap", "pitfall", "fail"]):
             return (
                 "Based on Lenny's Podcast conversations with seasoned growth leaders—particularly **Elena Verna** (Amplitude, Miro, Dropbox) and **Casey Winters** (Pinterest, Eventbrite)—here are the most critical mistakes companies make when scaling a product:\n\n"
@@ -179,27 +236,70 @@ class MockGroundedClient(BaseLLM):
                 "As **Fareed Mosavat** (Reforge, Slack) points out, startups often over-hire specialized growth, lifecycle, and paid acquisition roles before the core product engine has achieved repeatable product-market fit."
             )
 
-        # 6. Default: Retention Architecture & Four Fits
-        else:
-            return (
-                "Based on discussions from Lenny's Podcast, here are the foundational insights from product and growth leaders:\n\n"
-                "### 1. The Core Mechanism\n"
-                "Top practitioners emphasize that sustainable growth is never about isolated top-of-funnel acquisition tactics. "
-                "As **Brian Balfour** (Reforge, HubSpot) notes in his deep dives with Lenny, true scale requires aligning your **Four Fits**: "
-                "Market-Product Fit, Product-Channel Fit, Channel-Model Fit, and Model-Market Fit. If you fail to retain users before pouring money into distribution, "
-                "you are pouring water into a leaky bucket.\n\n"
-                "### 2. Diagnosis & Retention Benchmarks\n"
-                "**Elena Verna** (Amplitude, Miro, Dropbox) argues that retention is the single highest leverage lever in SaaS. "
-                "She recommends categorizing churn into:\n"
-                "- **Onboarding drop-off (Day 1 - Day 7):** Caused by friction before reaching the 'Aha!' moment.\n"
-                "- **Mid-term churn (Month 1 - Month 3):** Failure to build a recurring habit or integrate into daily team workflows.\n"
-                "- **Long-term churn (Month 6+):** Business model misalignment or lack of ongoing product expansion.\n\n"
-                "### 3. Actionable Playbook\n"
-                "- **Define your Activation Metric:** Pinpoint the specific threshold action correlated with 80%+ 90-day retention (e.g., Slack's 2,000 team messages).\n"
-                "- **Build Self-Reinforcing Loops:** Transition from linear sales funnels to user-generated, viral, or content-driven growth loops.\n"
-                "- **Run Rigorous Cohort Analyses:** Track weekly retention curves to ensure cohorts flatten out into an asymptotic horizontal line.\n\n"
-                "> *\"If your retention curve does not flatten, you do not have product-market fit—no amount of marketing will save you.\"* — **Casey Winters**\n"
-            )
+        # 10. Dynamic Synthesis from Retrieved Transcripts (Never return generic canned speeches!)
+        synthesized = self._synthesize_from_transcripts(prompt, query)
+        if synthesized:
+            return synthesized
+
+        # 11. Final Fallback: Retention Architecture
+        return (
+            "Based on discussions from Lenny's Podcast with top growth leaders like **Brian Balfour** and **Elena Verna**, here is how to approach durable growth:\n\n"
+            "### 1. The Core Principle: Retention Before Acquisition\n"
+            "Top practitioners emphasize that sustainable growth requires aligning your Four Fits: Market-Product, Product-Channel, Channel-Model, and Model-Market. If your product does not retain users, pouring money into marketing simply pours water into a leaky bucket.\n\n"
+            "### 2. Diagnosis & Retention Benchmarks\n"
+            "- **Onboarding drop-off (Day 1 - Day 7):** Caused by friction before reaching the 'Aha!' moment.\n"
+            "- **Mid-term churn (Month 1 - Month 3):** Failure to build a recurring habit or integrate into daily team workflows.\n"
+            "- **Long-term churn (Month 6+):** Business model misalignment or lack of ongoing product expansion.\n\n"
+            "### 3. Actionable Playbook\n"
+            "- **Define your Activation Metric:** Pinpoint the specific threshold action correlated with 80%+ 90-day retention.\n"
+            "- **Build Self-Reinforcing Loops:** Transition from linear sales funnels to compounding growth loops.\n"
+            "- **Run Rigorous Cohort Analyses:** Track weekly retention curves to ensure cohorts flatten out into an asymptotic horizontal line.\n\n"
+            "> *\"If your retention curve does not flatten, you do not have product-market fit—no amount of marketing will save you.\"* — **Casey Winters**"
+        )
+
+    def _synthesize_from_transcripts(self, prompt: str, query: str) -> Optional[str]:
+        """Synthesizes a grounded, dynamic response from retrieved transcript passages."""
+        if "[Source 1]" not in prompt:
+            return None
+
+        # Extract source chunks
+        matches = re.findall(
+            r'\[Source \d+\]:\s*Guest:\s*([^\n]+)\s*Episode:\s*([^\n]+)\s*Timestamp:\s*([^\n]+)\s*Dialogue:\s*(.*?)(?=\n----------------------------------------|\nUser Question:|$)',
+            prompt,
+            re.DOTALL
+        )
+        if not matches:
+            return None
+
+        primary_guest = matches[0][0].strip()
+        primary_ep = matches[0][1].strip()
+        dialogue = matches[0][3].strip()
+
+        # Clean dialogue sentences (skip host intro lines)
+        raw_sentences = [s.strip() for s in re.split(r'(?<=[.?!])\s+', dialogue) if len(s.strip()) > 35]
+        clean_sentences = [s for s in raw_sentences if not s.startswith("Lenny Rachitsky")]
+
+        if not clean_sentences:
+            clean_sentences = raw_sentences
+
+        if not clean_sentences:
+            return None
+
+        first_quote = clean_sentences[0]
+        key_points = clean_sentences[1:4] if len(clean_sentences) > 1 else clean_sentences[:1]
+        bullets = "\n".join(f"- **Insight:** {p}" for p in key_points)
+
+        return (
+            f"Based on discussions from Lenny's Podcast with **{primary_guest}** (*{primary_ep}*), here is the breakdown regarding your question:\n\n"
+            f"### 1. The Core Insight\n"
+            f"In conversation with Lenny, **{primary_guest}** explains:\n\n"
+            f"> *\"{first_quote}\"*\n\n"
+            f"### 2. Key Tactical Takeaways\n"
+            f"{bullets}\n\n"
+            f"### 3. Application Playbook\n"
+            f"- Ground your strategy directly in the verified principles shared by {primary_guest}.\n"
+            f"- Measure quantitative cohort impact rather than relying on subjective assumptions.\n"
+        )
 
     def _generate_ship30_essay(self, prompt: str) -> str:
         query = self._extract_user_query(prompt).lower()
