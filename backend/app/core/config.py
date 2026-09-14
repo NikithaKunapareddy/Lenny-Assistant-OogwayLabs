@@ -29,7 +29,7 @@ class Settings(BaseSettings):
     OPENAI_MODEL: str = os.getenv("OPENAI_MODEL", "gpt-4o")
 
     # RAG Settings
-    RAG_GROUNDING_THRESHOLD: float = float(os.getenv("RAG_GROUNDING_THRESHOLD", "0.09"))
+    RAG_GROUNDING_THRESHOLD: float = float(os.getenv("RAG_GROUNDING_THRESHOLD", "0.05"))
     RAG_TOP_K: int = int(os.getenv("RAG_TOP_K", "4"))
 
     class Config:
