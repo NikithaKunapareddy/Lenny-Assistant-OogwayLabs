@@ -57,13 +57,13 @@ class MockGroundedClient(BaseLLM):
             yield chunk
 
     def _extract_user_query(self, prompt: str) -> str:
-        # Match "User Question: <query>" or "Topic / Prompt: <query>"
-        m = re.search(r'(?:User Question|Topic / Prompt):\s*(.+?)(?:\n\n|\n[A-Z]|$)', prompt, re.DOTALL | re.IGNORECASE)
+        # Match "User Question: <query>", "Topic / Prompt: <query>", or "User Request: <query>"
+        m = re.search(r'(?:User Question|Topic / Prompt|User Request):\s*(.+?)(?:\n\n|\n[A-Z]|$)', prompt, re.DOTALL | re.IGNORECASE)
         if m:
             return m.group(1).strip()
         lines = [line.strip() for line in prompt.strip().split('\n') if line.strip()]
         for line in reversed(lines):
-            if not any(line.startswith(pfx) for pfx in ["[Source", "Guest:", "Episode:", "Timestamp:", "Dialogue:", "Assignment:", "Recent Conversation"]):
+            if not any(line.startswith(pfx) for pfx in ["[Source", "Guest:", "Episode:", "Timestamp:", "Dialogue:", "Assignment:", "Recent Conversation", "Generate a", "Retrieved Transcript"]):
                 return line
         return prompt
 
@@ -101,7 +101,26 @@ class MockGroundedClient(BaseLLM):
                 "> *\"If you have fewer than 40% of users saying they'd be very disappointed without your product, stop scaling growth immediately. The best use of this tool is to look at that percentage of highly disappointed users, understand what they're excited about, and build around them.\"* — **Sean Ellis**"
             )
 
-        # 2. Specific Named Framework: DHM Model (Gibson Biddle)
+        # 2. Specific Named Framework: Product-Led Growth (PLG) (Hila Qu & Elena Verna)
+        elif any(term in query for term in ["product-led growth", "product led growth", "what is plg", "plg strategy", "product-led", "self-serve motion"]):
+            return (
+                "Based on masterclasses from Lenny's Podcast with leading PLG authorities **Hila Qu** (*The ultimate guide to adding a PLG motion*, Reforge, GitLab) and **Elena Verna** (*10 growth tactics that never work*, Amplitude, Miro, Dropbox), here is the breakdown of **Product-Led Growth (PLG)**:\n\n"
+                "### 1. What is Product-Led Growth?\n"
+                "Product-Led Growth is a business methodology where **the product itself serves as the primary driver of customer acquisition, activation, retention, and expansion**.\n\n"
+                "Rather than relying on human sales reps and gatekept demo forms, PLG flips the traditional software sales model:\n"
+                "- **Traditional Sales-Led:** Marketing attracts lead -> Sales reps qualify and demo -> Customer pays upfront -> Customer finally accesses software.\n"
+                "- **Product-Led (Self-Serve):** User discovers software -> User accesses product immediately (freemium or free trial) -> Experiences value directly -> Converts to paid or expands across team.\n\n"
+                "### 2. The 3 Core Pillars of a PLG Motion (Hila Qu)\n"
+                "1. **Frictionless First Mile & Rapid Time-to-Value (TTV):** Eliminate upfront sales calls, mandatory credit cards, or lengthy onboarding. The user must experience the core 'Aha!' moment within minutes.\n"
+                "2. **Product Qualified Leads (PQLs):** Instead of Marketing Qualified Leads (MQLs based on whitepaper downloads), sales teams engage users based on actual in-product usage signals (e.g., reaching usage limits, inviting teammates, high engagement).\n"
+                "3. **In-Product Monetization & Expansion Triggers:** Upgrades are embedded naturally into product workflows (e.g., hitting collaboration limits in Miro, export resolutions in Figma, or integration limits in Slack).\n\n"
+                "### 3. Elena Verna's Rules for PLG\n"
+                "- **PLG is a Go-To-Market strategy, not just a product design:** It requires cross-functional alignment across product, growth marketing, data engineering, and product-led sales (PLS).\n"
+                "- **Self-serve before sales:** Build a frictionless self-serve bottom-up engine first, then layer on enterprise sales to capture team expansion.\n\n"
+                "> *\"In a product-led company, your product isn't just what you sell—it's your marketing channel, your sales rep, and your customer success agent.\"* — **Hila Qu & Elena Verna**"
+            )
+
+        # 3. Specific Named Framework: DHM Model (Gibson Biddle)
         elif any(term in query for term in ["dhm", "dhm model", "delight, hard-to-copy"]):
             return (
                 "Based on **Gibson Biddle's** (former VP of Product at Netflix and Chief Product Officer at Chegg) masterclass on Lenny's Podcast, here is the **DHM Model** for product strategy:\n\n"
@@ -340,12 +359,251 @@ class MockGroundedClient(BaseLLM):
 
     def _generate_ship30_essay(self, prompt: str) -> str:
         query = self._extract_user_query(prompt).lower()
-        if any(term in query for term in ["retention", "churn", "leaky bucket", "habit loop"]):
+
+        # 1. Product-Led Growth (PLG) - Priority over generic 'strategy'
+        if any(term in query for term in ["plg", "product-led", "product led", "self-serve", "freemium motion"]):
+            return self._generate_plg_essay(prompt)
+
+        # 2. Product Teams, Hiring & Leadership
+        elif any(term in query for term in ["team", "teams", "hire", "hiring", "org", "culture", "leadership", "scale a team", "scaling mistakes"]):
+            return self._generate_team_essay(prompt)
+
+        # 3. Product-Market Fit (PMF)
+        elif any(term in query for term in ["pmf", "product-market fit", "product market fit", "40%", "sean ellis"]):
             return self._generate_retention_essay(prompt)
-        elif any(term in query for term in ["strategy", "ravi mehta", "product strategy", "stack", "roadmap"]):
+
+        # 4. Retention, Churn & Growth Loops
+        elif any(term in query for term in ["retention", "churn", "leaky bucket", "habit loop"]):
+            return self._generate_retention_essay(prompt)
+
+        # 5. Product Strategy Stack (Ravi Mehta) - Strictly when about strategy stack / roadmaps
+        elif any(term in query for term in ["strategy stack", "ravi mehta"]) or ("product strategy" in query and not any(x in query for x in ["product-led", "product led", "plg"])) or ("strategy" in query and "roadmap" in query):
             return self._generate_strategy_essay(prompt)
-        else:
-            return self._generate_retention_essay(prompt)
+
+        # 6. Dynamic Synthesis from Retrieved Transcripts
+        dynamic_essay = self._generate_dynamic_ship30_essay(prompt, query)
+        if dynamic_essay:
+            return dynamic_essay
+
+        # 7. High-signal fallbacks
+        if "growth" in query or "acquisition" in query or "plg" in query:
+            return self._generate_plg_essay(prompt)
+        return self._generate_strategy_essay(prompt)
+
+    def _generate_plg_essay(self, prompt: str) -> str:
+        return (
+            "# The Product-Led Growth Engine: How Modern Software Companies Turn Products into Distribution Flywheels\n\n"
+            "Traditional SaaS go-to-market is broken.\n\n"
+            "Marketing burns millions purchasing ad clicks. Sales development reps spam cold LinkedIn inboxes trying to force 30-minute demo calls. Yet prospective buyers abandon the pipeline because nobody wants to talk to a salesperson just to see software.\n\n"
+            "The brutal reality: Buyers demand to experience product value before opening their corporate wallets.\n\n"
+            "In landmark conversations on Lenny's Podcast, leading growth operators—most notably **Hila Qu** (former Growth Lead at GitLab and VP of Growth at Acorns) and **Elena Verna** (Head of Growth at Dropbox, Amplitude, and Miro)—have dissected the exact mechanics of **Product-Led Growth (PLG)**. When executed correctly, PLG transforms your software from a passive asset into your most potent customer acquisition, onboarding, and expansion engine.\n\n"
+            "To build an authentic product-led growth strategy, companies must move beyond surface-level freemium gimmicks and re-architect their entire go-to-market engine around self-serve value.\n\n"
+            "---\n\n"
+            "## Step 1: The Go-To-Market Shift (Product as the Primary Channel)\n\n"
+            "The fundamental misconception about PLG is that it is merely a pricing tier (e.g. 'let's add a free plan').\n\n"
+            "As **Hila Qu** explained to Lenny in *The Ultimate Guide to Adding a PLG Motion*:\n\n"
+            "> *\"PLG is not a product feature; it is an organizational business model where product usage drives awareness, conversion, retention, and expansion. In sales-led, the human sells the promise. In product-led, the product proves the value.\"*\n\n"
+            "When software companies attempt to bolt a free tier onto a sales-led product without changing user experience, three fatal traps emerge:\n\n"
+            "1. **The Empty Room Syndrome:** Users sign up, land on an empty dashboard with zero guidance, and bounce within 90 seconds.\n"
+            "2. **Sales Team Cannibalization:** Sales reps perceive self-serve signups as threats to their quota rather than qualified pipeline.\n"
+            "3. **Conversion Black Hole:** Free signups surge, but conversion to paid remains near 0% because the monetization gate is misplaced.\n\n"
+            "Product-Led Growth requires un-gating your software so end-users can self-educate, self-onboard, and self-activate.\n\n"
+            "---\n\n"
+            "## Step 2: Compressing Time-to-Value (TTV) & The 'Aha!' Moment\n\n"
+            "In a sales-led motion, a solutions engineer guides the customer through setup. In a PLG motion, the user is completely alone.\n\n"
+            "If your product takes two hours or three days of configuration before delivering value, your PLG strategy will fail.\n\n"
+            "**Hila Qu** emphasizes that world-class PLG engines optimize relentlessly for **Time-to-Value (TTV)**:\n\n"
+            "- **The Setup Phase:** Remove all unnecessary friction before the user sees the interface. Eliminate credit card requirements, email verification delays, and multi-step profiling surveys.\n"
+            "- **The Aha! Moment:** The exact inflection point where the user emotionally and intellectually experiences the core product promise (e.g. Miro: collaborating on a canvas within 60 seconds; Slack: sending 2,000 messages across a team; Figma: sharing a design link with one click).\n"
+            "- **The Activation Milestone:** A leading indicator behavior that correlates with high long-term retention. At GitLab, Hila Qu tracked how fast a developer completed their first successful CI/CD build.\n\n"
+            "Every minute standing between signup and the Aha! moment cuts user conversion in half.\n\n"
+            "---\n\n"
+            "## Step 3: Shift from MQLs to PQLs (Product Qualified Leads)\n\n"
+            "In traditional marketing, a 'Lead' (MQL) is someone who downloaded an ebook or attended a webinar. These leads are notoriously cold.\n\n"
+            "In PLG, the highest-converting pipeline is generated by **Product Qualified Leads (PQLs)**.\n\n"
+            "As **Elena Verna** outlined to Lenny, a PQL is a user or team that has already demonstrated active, high-intent usage within the product:\n\n"
+            "- **Usage Volume Triggers:** A user reaches 80% of their free tier storage or project limit.\n"
+            "- **Collaboration Velocity:** An individual user invites 3 or more colleagues to their workspace within 48 hours.\n"
+            "- **Enterprise Feature Proximity:** A user in a corporate domain clicks on SSO, audit logs, or advanced permissions.\n\n"
+            "Instead of cold-calling strangers, your sales team practices **Product-Led Sales (PLS)**—reaching out to existing, passionate product users at the exact moment their organizational needs outgrow the self-serve tier.\n\n"
+            "---\n\n"
+            "## Step 4: Engineering Self-Reinforcing Product Loops\n\n"
+            "Linear marketing funnels lose momentum with every step. Compounding PLG companies scale through **Product Growth Loops** where active usage inherently attracts new users.\n\n"
+            "Elena Verna and Brian Balfour identify three dominant PLG loop mechanisms:\n\n"
+            "- **1. The Collaborative Viral Loop:** Product utility requires inviting others. Example: When a designer creates a prototype in Figma and shares the review link, the product manager and engineer must sign up to view and comment.\n"
+            "- **2. The Casual Contact Loop:** Using the product naturally exposes non-users to the brand. Example: Calendly links sent to clients, Loom video links shared with customers, or Typeform surveys distributed to audiences.\n"
+            "- **3. The User-Generated Content (UGC) Loop:** Work created inside the product is made public, indexed by search engines, and drives fresh organic top-of-funnel traffic (e.g. Canva templates, Notion public pages, Coda community docs).\n\n"
+            "When your product mechanics naturally generate the next cohort of users, customer acquisition cost (CAC) approaches zero.\n\n"
+            "---\n\n"
+            "## Step 5: The 30-Day PLG Transition Sprint\n\n"
+            "To operationalize a product-led growth motion inside your company over the next month, execute this 4-week protocol:\n\n"
+            "### Week 1: Map the Activation Bottleneck\n"
+            "Instrument cohort analytics to measure your exact drop-off from Signup to Aha! moment. Watch 15 recorded user onboarding sessions. Identify the single biggest stumbling block where users abandon the software.\n\n"
+            "### Week 2: Radical Onboarding Streamlining\n"
+            "Remove at least 50% of the friction points identified in Week 1. Eliminate credit card entry at signup. Implement interactive, pre-populated templates so new users never face a blank canvas.\n\n"
+            "### Week 3: Define Your PQL Threshold\n"
+            "Analyze historical data of your best paying customers. What specific product actions did they take in their first 14 days? Define your corporate PQL criteria (e.g. 5 active users + 20 core actions) and route these accounts directly to sales.\n\n"
+            "### Week 4: Align Incentives for Product-Led Sales\n"
+            "Restructure sales compensation so account executives are rewarded for expanding self-serve accounts. Shift sales from 'pitching software' to 'assisting active teams with enterprise security, compliance, and volume procurement.'\n\n"
+            "---\n\n"
+            "## The Non-Negotiable Mindset Shift\n\n"
+            "Great product-led companies understand that the best salesperson in the company will never be a human—it will always be the product itself.\n\n"
+            "Stop forcing buyers through outdated enterprise qualification mazes. Let them touch the product. Let them experience the magic in seconds. Let them fall in love with the workflow.\n\n"
+            "When your product sells itself, your sales team doesn't have to push—they just step in to help customers expand. That is the essence of compounding, product-led scale."
+        )
+
+    def _generate_team_essay(self, prompt: str) -> str:
+        return (
+            "# The High-Performance Product Team: How to Structure, Hire, and Scale Builders Without Losing Startup Velocity\n\n"
+            "As companies scale, their greatest enemy isn't competition—it is organizational friction.\n\n"
+            "Startups begin with five scrappy builders shipping features in days. Fast forward three years: the team has 50 engineers, 10 PMs, layers of middle management, and shipping a simple button update takes six weeks of steering committee meetings.\n\n"
+            "The brutal reality: Adding more people to a broken organizational structure doesn't increase output; it destroys velocity.\n\n"
+            "In landmark conversations on Lenny's Podcast, legendary product and organizational leaders—including **Adam Fishman** (former VP of Product & Growth at Patreon and Lyft) and **Fareed Mosavat** (former VP of Programs at Reforge and Product Director at Slack)—have outlined the blueprint for building high-performing product teams that scale gracefully.\n\n"
+            "To build an elite product team, leaders must abandon bloated feature factories and build autonomous, cross-functional squads aligned around business outcomes.\n\n"
+            "---\n\n"
+            "## Step 1: The Startup Scaling Trap (Premature Specialization)\n\n"
+            "The most common mistake scaling startups make is hiring specialized product managers too early.\n\n"
+            "As **Fareed Mosavat** warned in his conversation with Lenny on *Startup Scaling Mistakes*:\n\n"
+            "> *\"Founders often hire PMs when what they really need is product strategy. When you hire PMs into an undefined problem space, they instinctively start creating process, meetings, and Jira tickets just to justify their existence.\"*\n\n"
+            "When teams scale improperly, three fatal symptoms emerge:\n\n"
+            "1. **The Process Bureaucracy:** Sprints become obsessed with story points, velocity charts, and retrospectives rather than customer impact.\n"
+            "2. **Ownership Fragmentation:** Nobody owns the end-to-end customer journey. Engineering blames PM for bad specs; PM blames Design for slow mocks; Design blames Engineering for buggy builds.\n"
+            "3. **Mercenary Culture:** Builders stop caring about business outcomes and measure success strictly by shipping tasks assigned to them.\n\n"
+            "Great product leaders hire for missionary zeal, agency, and problem ownership—not ticket management.\n\n"
+            "---\n\n"
+            "## Step 2: The Three Product Builder Archetypes (Adam Fishman)\n\n"
+            "You cannot hire the same type of product manager for every stage of your company.\n\n"
+            "**Adam Fishman** breaks product talent into three distinct archetypes based on company maturity:\n\n"
+            "- **The 0-to-1 Pioneer:** Thrives in complete ambiguity. High customer empathy, rapid prototyping skills, and comfortable throwing away 80% of what they build to find product-market fit.\n"
+            "- **The 1-to-10 Scaler:** Specializes in building systems, instrumentation, and growth loops. They optimize conversion funnels, run rigorous A/B experiments, and establish repeatable operational cadences.\n"
+            "- **The 10-to-100 Enterprise Optimizer:** Masters cross-functional diplomacy, enterprise compliance, complex stakeholder management, and portfolio governance.\n\n"
+            "Hiring a 10-to-100 operator for a 0-to-1 product bet will paralyze execution. Match the builder archetype to the maturity of the product domain.\n\n"
+            "---\n\n"
+            "## Step 3: Autonomous Cross-Functional Pods\n\n"
+            "Siloed functional departments (Engineering over here, Product over there, Marketing across the hall) generate communication drag.\n\n"
+            "High-velocity organizations organize around **Full-Stack Autonomous Pods**:\n\n"
+            "- **Core Composition:** 1 Product Manager, 1 Product Designer, 4-6 Engineers, and a dedicated Data Analyst.\n"
+            "- **Outcome-Driven Mandate:** Pods are never assigned a list of features to build. They are assigned a business metric to move (e.g. 'Improve Day-7 Activation from 18% to 28%').\n"
+            "- **End-to-End Decision Rights:** The pod has full autonomy to research, design, ship, and iterate without requiring executive approval for routine sprint bets.\n\n"
+            "When engineers sit side-by-side with designers and hear customer feedback directly, solutions become simpler, more elegant, and drastically faster to ship.\n\n"
+            "---\n\n"
+            "## Step 4: Fostering Extreme Agency & Craft (Bob Baxley)\n\n"
+            "Elite product teams are differentiated not just by their metrics, but by their standard of craft.\n\n"
+            "**Bob Baxley** (former design leader at Apple, Pinterest, and Disney) shared on Lenny's Podcast that the greatest products are built by teams that possess an uncompromising commitment to the details:\n\n"
+            "> *\"True product craft is the invisible care baked into every interaction. Users can sense when software was built by people who genuinely cared versus people who were just clearing backlog tickets.\"*\n\n"
+            "To instill this culture:\n\n"
+            "- **Celebrate deletions:** Reward engineers who delete 500 lines of redundant code or remove confusing settings.\n"
+            "- **Dogfood relentlessly:** Mandate that every product lead and engineer use their own product daily under real-world customer conditions.\n"
+            "- **High agency over compliance:** Encourage team members to fix broken customer experiences immediately without waiting for roadmap prioritization.\n\n"
+            "---\n\n"
+            "## Step 5: The 30-Day Product Team Calibration Sprint\n\n"
+            "To reset your product team's operating cadence and reignite startup velocity, execute this 4-week protocol:\n\n"
+            "### Week 1: The Process Audit\n"
+            "Cancel every recurring meeting across the product org for one week. Reinstate only those meetings that individual contributors explicitly advocate for. Aim to eliminate at least 30% of sync time.\n\n"
+            "### Week 2: Metric-Based Pod Alignment\n"
+            "Audit team charters. Ensure every engineering pod has one clear North Star metric and two guardrail metrics. Eliminate feature-based pod names (e.g. 'The Billing Team') and replace them with outcome-based names (e.g. 'The Activation Pod').\n\n"
+            "### Week 3: Direct Customer Exposure\n"
+            "Require every engineer and designer on the team to attend at least two live customer discovery or support calls this week. Hearing customer frustrations firsthand transforms sprint priorities faster than any PM document.\n\n"
+            "### Week 4: Ship and Retrospect on Impact\n"
+            "Institute a monthly 'Impact Demo' where pods demonstrate the customer behavior they changed rather than the code they wrote. Celebrate learning from failed experiments equally with successful wins.\n\n"
+            "---\n\n"
+            "## The Non-Negotiable Mindset Shift\n\n"
+            "Great product organizations are not managed into greatness; they are unleashed.\n\n"
+            "Your job as a product leader is not to dictate the solutions. Your job is to provide absolute clarity on the strategic problem, assemble a team of high-agency missionaries, remove bureaucratic obstacles, and get out of their way.\n\n"
+            "Give smart people clear problems, real ownership, and direct access to users—and they will build products that reshape markets."
+        )
+
+    def _generate_dynamic_ship30_essay(self, prompt: str, query: str) -> Optional[str]:
+        """Dynamically constructs a ~1,250-word Ship 30 for 30 essay directly from retrieved passages."""
+        if "[Source 1]" not in prompt:
+            return None
+
+        matches = re.findall(
+            r'\[Source \d+\]:\s*Guest:\s*([^\n]+)\s*Episode:\s*([^\n]+)\s*Timestamp:\s*([^\n]+)\s*Dialogue:\s*(.*?)(?=\n----------------------------------------|\nTopic / Prompt:|\nAssignment:|$)',
+            prompt,
+            re.DOTALL
+        )
+        if not matches:
+            return None
+
+        primary_guest = matches[0][0].strip()
+        primary_ep = matches[0][1].strip()
+        dialogue = matches[0][3].strip()
+
+        # Extract sentences
+        raw_sentences = [s.strip() for s in re.split(r'(?<=[.?!])\s+', dialogue) if len(s.strip()) > 35]
+        clean_sentences = []
+        for s in raw_sentences:
+            cleaned = re.sub(r'^[A-Z][a-zA-Z\s]+(?:\(\d+:\d+(?::\d+)?\))?:\s*', '', s).strip()
+            if len(cleaned) > 30 and not cleaned.lower().startswith(("welcome to", "thank you", "thanks")):
+                clean_sentences.append(cleaned)
+
+        if not clean_sentences:
+            return None
+
+        headline_topic = query.title().replace("Write An Article About ", "").replace("Write An Essay On ", "").strip()
+        q1 = clean_sentences[0]
+        q2 = clean_sentences[1] if len(clean_sentences) > 1 else q1
+        q3 = clean_sentences[2] if len(clean_sentences) > 2 else q2
+
+        secondary_guest = matches[1][0].strip() if len(matches) > 1 else "leading growth practitioners"
+
+        return (
+            f"# Mastering {headline_topic}: How High-Velocity Operators Turn Tactical Noise into Strategic Advantage\n\n"
+            f"Most tech organizations don't fail because they lack ambition—they fail because they lack operational clarity.\n\n"
+            f"Engineers push code daily. Product teams manage infinite backlogs. Marketing launches campaigns across five channels. Yet growth plateaus because nobody has identified the core compounding lever.\n\n"
+            f"The brutal reality: Tactical execution without grounded strategic leverage is just high-speed wheel-spinning.\n\n"
+            f"In seminal discussions on Lenny's Podcast, leading operators—including **{primary_guest}** (*{primary_ep}*) and **{secondary_guest}**—have revealed the exact mechanisms required to break through execution stagnation.\n\n"
+            f"To achieve durable velocity, teams must master the structural principles that govern sustainable software scale.\n\n"
+            f"---\n\n"
+            f"## Step 1: Diagnosing the Core Bottleneck\n\n"
+            f"Before writing code or adjusting roadmaps, elite teams isolate the true root constraint holding back their product.\n\n"
+            f"As **{primary_guest}** shared with Lenny:\n\n"
+            f"> *\"{q1}\"*\n\n"
+            f"When organizations misdiagnose their core challenge, three predictable failures occur:\n\n"
+            f"1. **Vanity Metric Chasing:** Teams celebrate short-term spikes while underlying retention and customer satisfaction decay.\n"
+            f"2. **Organizational Friction:** Functional leaders argue over conflicting priorities instead of aligning around a unified North Star.\n"
+            f"3. **Premature Complexity:** Adding features to compensate for an unvalidated value proposition.\n\n"
+            f"Focus precedes velocity. Win where your product has an unfair, defensible right to succeed.\n\n"
+            f"---\n\n"
+            f"## Step 2: Designing for Customer Value Before Business Extraction\n\n"
+            f"The fundamental law of modern software: You cannot capture value until you have delivered undeniable value.\n\n"
+            f"High-performing product teams architect their user experience around the rapid realization of customer outcomes:\n\n"
+            f"> *\"{q2}\"*\n\n"
+            f"To operationalize this principle:\n\n"
+            f"- **Map the First Mile:** Eliminate 50% of the cognitive and operational load required during initial onboarding.\n"
+            f"- **Isolate the Emotional Payoff:** Define the single micro-action that proves to the user your solution works.\n"
+            f"- **Build for Habits, Not Visits:** Create natural internal and external triggers that bring users back on a predictable cadence.\n\n"
+            f"---\n\n"
+            f"## Step 3: Aligning Cross-Functional Incentives\n\n"
+            f"A brilliant product vision is worthless if engineering, product design, and distribution are misaligned.\n\n"
+            f"As **{secondary_guest}** emphasized on Lenny's Podcast, high-leverage teams establish shared scorecards that tie individual tasks directly to company-level outcomes:\n\n"
+            f"- **Outcome-Driven Pods:** Structure cross-functional teams around moving a specific business metric rather than delivering static feature lists.\n"
+            f"- **Extreme Transparency:** Share unfiltered customer feedback and experiment results across the entire organization weekly.\n"
+            f"- **Ruthless De-prioritization:** Say 'No' to 80% of secondary requests to protect the 20% that create market leadership.\n\n"
+            f"---\n\n"
+            f"## Step 4: Building Closed Compounding Feedback Loops\n\n"
+            f"Linear processes exhaust resources; compounding loops generate their own fuel.\n\n"
+            f"Whether your engine is driven by product-led collaboration, content virality, or customer data reinvestment:\n\n"
+            f"> *\"{q3}\"*\n\n"
+            f"Every cohort of users must make the product more valuable, more intuitive, or more accessible for the next cohort. That is the mathematical difference between linear effort and exponential leverage.\n\n"
+            f"---\n\n"
+            f"## Step 5: The 30-Day Operational Reset Sprint\n\n"
+            f"To put these principles into practice starting this week, execute this four-week sprint protocol:\n\n"
+            f"### Week 1: Audit the Fracture Lines\n"
+            f"Interview 10 active customers and 5 churned users. Identify the top three discrepancies between what your team thinks you sell and what customers actually value.\n\n"
+            f"### Week 2: Streamline the User Journey\n"
+            f"Cut the bottom quartile of non-performing features from your active navigation. Simplify the primary workflow into three intuitive steps.\n\n"
+            f"### Week 3: Establish Leading Indicators\n"
+            f"Instrument and monitor your primary activation milestone daily. Ensure every product team member has real-time visibility into the metric dashboard.\n\n"
+            f"### Week 4: Iterate and Scale\n"
+            f"Review experiment results. Double down on the highest-leverage insight uncovered, eliminate low-conviction initiatives, and lock in the operating cadence.\n\n"
+            f"---\n\n"
+            f"## The Non-Negotiable Mindset Shift\n\n"
+            f"Enduring software companies are not built by chance. They are engineered through relentless clarity, disciplined subtraction, and deep empathy for user problems.\n\n"
+            f"Stop treating growth as a collection of disjointed tactics. Build the structural foundation that lets your product compound on its own merit.\n\n"
+            f"Focus on the core. Align your builders. Measure what matters. That is how winning products are made."
+        )
 
     def _generate_strategy_essay(self, prompt: str) -> str:
         return (
@@ -493,8 +751,30 @@ class MockGroundedClient(BaseLLM):
         )
 
     def _generate_artifact(self, prompt: str) -> str:
-        p_lower = prompt.lower()
-        if any(term in p_lower for term in ["strategy", "ravi mehta", "product strategy", "stack"]):
+        query = self._extract_user_query(prompt).lower()
+
+        # 1. Retention, Churn & Habit Loops (Top priority when retention is requested)
+        if any(term in query for term in ["retention", "churn", "leaky bucket", "habit loop", "cohort"]):
+            return self._generate_retention_artifact(prompt)
+
+        # 2. Product-Led Growth (PLG)
+        elif any(term in query for term in ["plg", "product-led", "product led", "self-serve"]):
+            return self._generate_retention_artifact(prompt)
+
+        # 3. Product Teams & Org Structure
+        elif any(term in query for term in ["team", "teams", "hire", "hiring", "org", "pod", "leadership"]):
+            return self._generate_strategy_artifact(prompt)
+
+        # 4. Product Strategy Stack (Ravi Mehta) - strictly when strategy stack/roadmap
+        elif any(term in query for term in ["strategy stack", "ravi mehta"]) or ("product strategy" in query and not any(x in query for x in ["retention", "plg", "product-led"])) or ("strategy" in query and "roadmap" in query):
+            return self._generate_strategy_artifact(prompt)
+
+        # 5. Check if query mentions retention anywhere
+        elif "retention" in query:
+            return self._generate_retention_artifact(prompt)
+
+        # 6. Fallback based on query terms
+        if any(term in query for term in ["strategy", "roadmap"]):
             return self._generate_strategy_artifact(prompt)
         return self._generate_retention_artifact(prompt)
 
@@ -725,7 +1005,7 @@ class MockGroundedClient(BaseLLM):
             "<head>\n"
             "  <meta charset=\"UTF-8\" />\n"
             "  <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\n"
-            "  <title>Lenny Product Retention & Growth Framework</title>\n"
+            "  <title>Product Retention Audit Framework</title>\n"
             "  <style>\n"
             "    * { box-sizing: border-box; margin: 0; padding: 0; }\n"
             "    body {\n"
@@ -900,48 +1180,56 @@ class MockGroundedClient(BaseLLM):
             "        <span class=\"badge badge-orange\">Brian Balfour (Reforge)</span>\n"
             "        <span class=\"badge badge-purple\">Casey Winters (Pinterest)</span>\n"
             "      </div>\n"
-            "      <h1>B2B SaaS Retention & Growth Audit Framework</h1>\n"
-            "      <p class=\"subtitle\">Directly grounded in Lenny's Podcast masterclasses on activation velocity, four fits alignment, and asymptotic cohort curves.</p>\n"
+            "      <h1>Product Retention Audit Framework</h1>\n"
+            "      <p class=\"subtitle\">Directly grounded in Lenny's Podcast masterclasses on activation velocity, cohort retention curves, churn analysis, and compounding growth loops.</p>\n"
             "    </div>\n\n"
             "    <div class=\"grid\">\n"
             "      <div class=\"card card-green\">\n"
-            "        <div class=\"card-speaker speaker-green\">Elena Verna • Activation</div>\n"
+            "        <div class=\"card-speaker speaker-green\">Elena Verna • Activation &amp; Onboarding</div>\n"
             "        <div class=\"card-title\">1. Onboarding Velocity</div>\n"
             "        <div class=\"card-desc\">Eliminate optional setup before the 'Aha!' moment. 70% of churn occurs between signup and Day 7 if value is delayed.</div>\n"
             "      </div>\n"
             "      <div class=\"card card-blue\">\n"
-            "        <div class=\"card-speaker speaker-blue\">Brian Balfour • Alignment</div>\n"
+            "        <div class=\"card-speaker speaker-blue\">Brian Balfour • Four Fits Alignment</div>\n"
             "        <div class=\"card-title\">2. Four Fits Audit</div>\n"
             "        <div class=\"card-desc\">Verify Market-Product, Product-Channel, Channel-Model, and Model-Market fit before deploying growth capital.</div>\n"
             "      </div>\n"
             "      <div class=\"card card-orange\">\n"
-            "        <div class=\"card-speaker speaker-orange\">Casey Winters • Mechanics</div>\n"
+            "        <div class=\"card-speaker speaker-orange\">Casey Winters • Retention Drivers</div>\n"
             "        <div class=\"card-title\">3. Compounding Loops</div>\n"
             "        <div class=\"card-desc\">Transition from leaky funnels to viral collaboration and content loops where retained users generate fuel for new acquisition.</div>\n"
             "      </div>\n"
             "      <div class=\"card card-purple\">\n"
-            "        <div class=\"card-speaker speaker-purple\">Sean Ellis • Benchmarking</div>\n"
+            "        <div class=\"card-speaker speaker-purple\">Sean Ellis • PMF Benchmarking</div>\n"
             "        <div class=\"card-title\">4. 40% PMF Test</div>\n"
             "        <div class=\"card-desc\">Survey users: 'How would you feel without this product?'. If &lt;40% say 'Very disappointed', halt acquisition spend.</div>\n"
             "      </div>\n"
             "    </div>\n\n"
             "    <div class=\"checklist\">\n"
-            "      <div class=\"checklist-title\">Operational Verification Checklist (Grounded in Transcripts)</div>\n"
+            "      <div class=\"checklist-title\">Product Retention &amp; Cohort Audit Checklist</div>\n"
             "      <label class=\"item\">\n"
             "        <input type=\"checkbox\" class=\"checkbox\" checked />\n"
-            "        <span>Plot 6-month cohort retention curves to verify asymptotic flattening.<span class=\"item-tag tag-casey\">Casey Winters</span></span>\n"
+            "        <span><strong>Retention Metrics:</strong> Plot 6-month cohort retention curves to verify asymptotic horizontal flattening by Day 30.<span class=\"item-tag tag-casey\">Casey Winters</span></span>\n"
             "      </label>\n"
             "      <label class=\"item\">\n"
             "        <input type=\"checkbox\" class=\"checkbox\" checked />\n"
-            "        <span>Define activation milestone correlated with 80%+ 90-day retention.<span class=\"item-tag tag-elena\">Elena Verna</span></span>\n"
+            "        <span><strong>Activation &amp; Onboarding:</strong> Measure Time-to-Value (TTV); ensure users hit their Aha! moment in the first 5 minutes.<span class=\"item-tag tag-elena\">Elena Verna</span></span>\n"
             "      </label>\n"
             "      <label class=\"item\">\n"
             "        <input type=\"checkbox\" class=\"checkbox\" />\n"
-            "        <span>Verify Product-Channel Fit: ensure product mechanics naturally suit distribution.<span class=\"item-tag tag-brian\">Brian Balfour</span></span>\n"
+            "        <span><strong>Churn Analysis:</strong> Categorize churn into Day 1-7 onboarding drop-off vs Month 1-3 habit formation failure.<span class=\"item-tag tag-elena\">Elena Verna</span></span>\n"
             "      </label>\n"
             "      <label class=\"item\">\n"
             "        <input type=\"checkbox\" class=\"checkbox\" />\n"
-            "        <span>Run Sean Ellis 40% PMF benchmark survey on active weekly users.<span class=\"item-tag tag-sean\">Sean Ellis</span></span>\n"
+            "        <span><strong>Customer Engagement:</strong> Track frequency of core habit loops (DAU/MAU or WAU/MAU) based on natural usage cadence.<span class=\"item-tag tag-brian\">Brian Balfour</span></span>\n"
+            "      </label>\n"
+            "      <label class=\"item\">\n"
+            "        <input type=\"checkbox\" class=\"checkbox\" />\n"
+            "        <span><strong>Retention Drivers:</strong> Verify Product-Channel Fit so product usage naturally reinforces distribution channels.<span class=\"item-tag tag-brian\">Brian Balfour</span></span>\n"
+            "      </label>\n"
+            "      <label class=\"item\">\n"
+            "        <input type=\"checkbox\" class=\"checkbox\" />\n"
+            "        <span><strong>Retention Experiments:</strong> Run the Sean Ellis 40% PMF benchmark survey across weekly active cohort users.<span class=\"item-tag tag-sean\">Sean Ellis</span></span>\n"
             "      </label>\n"
             "    </div>\n\n"
             "    <div class=\"quote\">\n"

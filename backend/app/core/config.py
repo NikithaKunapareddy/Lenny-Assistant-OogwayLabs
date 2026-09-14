@@ -17,7 +17,7 @@ class Settings(BaseSettings):
     DEFAULT_MODEL_PROVIDER: str = os.getenv("DEFAULT_MODEL_PROVIDER", "mock")
     OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
     OLLAMA_MODEL: str = os.getenv("OLLAMA_MODEL", "llama3.2:3b")
-    OLLAMA_TIMEOUT: int = int(os.getenv("OLLAMA_TIMEOUT", "60"))
+    OLLAMA_TIMEOUT: int = int(os.getenv("OLLAMA_TIMEOUT", "8"))
 
     # CORS: comma-separated origins for production (e.g. "https://myapp.com,https://www.myapp.com")
     ALLOWED_ORIGINS: str = os.getenv("ALLOWED_ORIGINS", "")
@@ -32,8 +32,15 @@ class Settings(BaseSettings):
     RAG_GROUNDING_THRESHOLD: float = float(os.getenv("RAG_GROUNDING_THRESHOLD", "0.05"))
     RAG_TOP_K: int = int(os.getenv("RAG_TOP_K", "4"))
 
+    # Supabase Settings
+    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
+    SUPABASE_PUBLISHABLE_KEY: str = os.getenv("SUPABASE_PUBLISHABLE_KEY", "")
+    SUPABASE_SECRET_KEY: str = os.getenv("SUPABASE_SECRET_KEY", "")
+    SUPABASE_JWKS_URL: str = os.getenv("SUPABASE_JWKS_URL", "")
+    DIRECT_URL: str = os.getenv("DIRECT_URL", "")
+
     class Config:
-        env_file = ".env"
+        env_file = (".env", "../.env")
         extra = "allow"
 
 settings = Settings()

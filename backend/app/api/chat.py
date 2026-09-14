@@ -65,28 +65,31 @@ def send_chat_message(req: ChatRequest, db: Session = Depends(get_db)):
         db.commit()
         db.refresh(session)
 
-    # 2. Persist User Message
+    # 2. Assemble previous conversation history BEFORE adding the new message
+    past_messages = sorted(session.messages, key=lambda m: m.created_at) if session.messages else []
+    history = [
+        {"role": m.role, "content": m.content}
+        for m in past_messages
+    ]
+
+    # 3. Create User Message
     user_msg = Message(
         session_id=session.id,
         role="user",
         content=req.message
     )
     db.add(user_msg)
-    db.commit()
-
-    # 3. Assemble previous conversation history
-    past_messages = sorted(session.messages, key=lambda m: m.created_at)
-    history = [
-        {"role": m.role, "content": m.content}
-        for m in past_messages[:-1] # exclude the user message just added
-    ]
 
     # 4. Execute Agent Orchestrator
+    target_provider = req.model_provider or session.model_provider or llm_manager.active_provider
+    if req.model_provider and req.model_provider != session.model_provider:
+        session.model_provider = req.model_provider
+
     try:
         agent_result = agent_orchestrator.execute(
             query=req.message,
             conversation_history=history,
-            model_provider_override=req.model_provider or session.model_provider
+            model_provider_override=target_provider
         )
     except Exception as e:
         logger.error(f"agent_error session={session.id} error={str(e)}, falling back to Grounded Engine")
@@ -96,7 +99,7 @@ def send_chat_message(req: ChatRequest, db: Session = Depends(get_db)):
                 conversation_history=history,
                 model_provider_override="mock"
             )
-            agent_result["model_provider"] = req.model_provider or session.model_provider
+            agent_result["model_provider"] = target_provider
         except Exception as inner_e:
             agent_result = {
                 "content": "I apologize, but I encountered an issue processing your question. Please try asking again.",
@@ -106,10 +109,10 @@ def send_chat_message(req: ChatRequest, db: Session = Depends(get_db)):
                 "skill": "error",
                 "latency_ms": 0,
                 "is_grounded": False,
-                "model_provider": req.model_provider or session.model_provider
+                "model_provider": target_provider
             }
 
-    # 5. Persist Assistant Message
+    # 5. Create Assistant Message
     assistant_msg = Message(
         session_id=session.id,
         role="assistant",
@@ -119,8 +122,6 @@ def send_chat_message(req: ChatRequest, db: Session = Depends(get_db)):
         latency_ms=agent_result.get("latency_ms", 0)
     )
     db.add(assistant_msg)
-    db.commit()
-    db.refresh(assistant_msg)
 
     # 6. If an artifact was generated, persist to database
     saved_artifact = None
@@ -134,21 +135,22 @@ def send_chat_message(req: ChatRequest, db: Session = Depends(get_db)):
             content=art_data.get("content", "")
         )
         db.add(db_artifact)
-        db.commit()
-        db.refresh(db_artifact)
         saved_artifact = {
             "id": db_artifact.id,
             "title": db_artifact.title,
             "type": db_artifact.artifact_type,
+            "artifact_type": db_artifact.artifact_type,
             "content": db_artifact.content
         }
 
     # 7. Update Session Title if this is the first interaction
-    if len(past_messages) <= 1:
+    if len(past_messages) == 0:
         truncated_title = req.message[:40] + ("..." if len(req.message) > 40 else "")
         session.title = truncated_title
     session.updated_at = datetime.now(timezone.utc)
     db.add(session)
+
+    # Single atomic commit for all changes
     db.commit()
 
     return ChatResponse(

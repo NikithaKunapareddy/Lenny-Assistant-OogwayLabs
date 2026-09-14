@@ -111,6 +111,20 @@ def delete_session(session_id: str, db: Session = Depends(get_db)):
     db.commit()
     return None
 
+@router.delete("/{session_id}/messages", status_code=status.HTTP_204_NO_CONTENT)
+def clear_session_messages(session_id: str, db: Session = Depends(get_db)):
+    session = db.query(DbSession).filter(DbSession.id == session_id).first()
+    if not session:
+        raise HTTPException(status_code=404, detail=f"Session '{session_id}' not found")
+    for m in session.messages:
+        db.delete(m)
+    for a in session.artifacts:
+        db.delete(a)
+    session.title = "New Strategy Chat"
+    session.updated_at = datetime.now(timezone.utc)
+    db.commit()
+    return None
+
 class RenameSessionRequest(BaseModel):
     title: str
 

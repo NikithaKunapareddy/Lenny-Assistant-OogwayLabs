@@ -319,7 +319,7 @@ export default function ChatArea({
                     title="Change model"
                   >
                     <span style={{ fontSize: 11.5 }}>
-                      {activeModel?.label?.split(' ').slice(1, 3).join(' ') || 'Local'}
+                      {activeModel?.label || 'Grounded Engine'}
                     </span>
                     <ChevronDown size={11} />
                   </button>

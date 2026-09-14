@@ -8,6 +8,15 @@ db_url = settings.DATABASE_URL
 if db_url.startswith("postgres://"):
     db_url = db_url.replace("postgres://", "postgresql://", 1)
 
+# Psycopg2 does not recognize pgbouncer=true as a libpq connection option
+if "pgbouncer=true" in db_url:
+    if "?pgbouncer=true&" in db_url:
+        db_url = db_url.replace("?pgbouncer=true&", "?")
+    elif "&pgbouncer=true" in db_url:
+        db_url = db_url.replace("&pgbouncer=true", "")
+    elif "?pgbouncer=true" in db_url:
+        db_url = db_url.replace("?pgbouncer=true", "")
+
 connect_args = {"check_same_thread": False} if "sqlite" in db_url else {}
 
 engine = create_engine(

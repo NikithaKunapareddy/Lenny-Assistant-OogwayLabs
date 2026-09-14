@@ -15,24 +15,35 @@ class ArtifactSkill:
         conversation_history: Optional[List[Dict[str, str]]] = None
     ) -> Dict[str, Any]:
         # Search relevant transcripts for framework data
-        search_query = query.replace("framework", "").replace("artifact", "").replace("checklist", "").strip()
-        if not search_query and conversation_history:
+        cleaned_search = re.sub(
+            r'(?i)\b(create|generate|build|make|design|an?|interactive|html|css|framework|checklist|artifact|matrix|template|scorecard|with)\b',
+            '',
+            query
+        ).strip()
+        cleaned_search = re.sub(r'^[^\w]+|[^\w]+$', '', cleaned_search).strip()
+
+        if not cleaned_search and conversation_history:
             for m in reversed(conversation_history):
                 if m["role"] == "user":
-                    search_query = m["content"]
+                    cleaned_search = re.sub(
+                        r'(?i)\b(create|generate|build|make|design|an?|interactive|html|css|framework|checklist|artifact|matrix|template|scorecard|with)\b',
+                        '',
+                        m["content"]
+                    ).strip()
                     break
 
-        if not search_query:
-            search_query = "growth framework and strategy model"
+        if not cleaned_search:
+            cleaned_search = "product retention and growth framework"
 
-        search_res = retriever.search(search_query, top_k=4, threshold=0.05)
+        search_res = retriever.search(cleaned_search, top_k=4, threshold=0.05)
         context_str = retriever.format_sources_for_prompt(search_res["results"])
 
         prompt = (
             f"Retrieved Transcript Passages from Lenny's Podcast:\n"
             f"{context_str}\n\n"
+            f"Topic / Prompt: {query}\n\n"
             f"User Request: {query}\n\n"
-            f"Generate a beautiful, responsive HTML/CSS framework or checklist artifact based strictly on the above knowledge:"
+            f"Assignment: Generate a beautiful, responsive HTML/CSS framework or checklist artifact based strictly on the above knowledge for: {query}"
         )
 
         response_text = llm.generate(

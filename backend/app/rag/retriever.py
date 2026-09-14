@@ -115,6 +115,16 @@ class LennyRetriever:
                         boost += 0.04
 
             # High-signal phrase boosting for specific PM/growth concepts
+            if any(k in query_lower for k in ["plg", "product-led", "product led", "self-serve"]):
+                if "plg" in chunk_content_lower or "product-led" in chunk_content_lower or "self-serve" in chunk_content_lower:
+                    boost += 0.15
+                if "hila qu" in chunk_content_lower or "elena verna" in chunk_content_lower:
+                    boost += 0.12
+
+            if any(k in query_lower for k in ["team", "teams", "hire", "hiring", "growth team", "product team"]):
+                if "growth team" in chunk_content_lower or "adam fishman" in chunk_content_lower or "high-performing" in chunk_content_lower:
+                    boost += 0.14
+
             if any(k in query_lower for k in ["40%", "40 percent", "pmf", "product-market fit", "product market fit", "sean ellis", "survey"]):
                 if "very disappointed" in chunk_content_lower or "40%" in chunk_content_lower or "no longer use this product" in chunk_content_lower:
                     boost += 0.12
@@ -129,7 +139,7 @@ class LennyRetriever:
                 if "first mile" in chunk_content_lower or "aha moment" in chunk_content_lower or "first 30 seconds" in chunk_content_lower:
                     boost += 0.10
 
-            if any(k in query_lower for k in ["strategy stack", "product strategy", "ravi mehta"]):
+            if (any(k in query_lower for k in ["strategy stack", "ravi mehta"])) or ("product strategy" in query_lower and not any(x in query_lower for x in ["product-led", "product led", "plg"])):
                 if "strategy stack" in chunk_content_lower or "roadmap is not strategy" in chunk_content_lower:
                     boost += 0.10
 

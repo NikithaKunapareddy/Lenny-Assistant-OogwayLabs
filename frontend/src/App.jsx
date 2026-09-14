@@ -112,10 +112,16 @@ export default function App() {
     }
   };
 
-  const handleClearChat = () => {
+  const handleClearChat = async () => {
+    if (activeSessionId) {
+      try {
+        await api.clearSessionMessages(activeSessionId);
+      } catch {}
+    }
     setMessages([]);
     setActiveArtifact(null);
     setIsArtifactOpen(false);
+    loadSessions();
   };
 
   return (

@@ -48,6 +48,11 @@ export const api = {
     return res.status === 204;
   },
 
+  async clearSessionMessages(sessionId) {
+    const res = await fetch(`${API_BASE}/sessions/${sessionId}/messages`, { method: 'DELETE' });
+    return res.status === 204;
+  },
+
   async renameSession(sessionId, title) {
     const res = await fetch(`${API_BASE}/sessions/${sessionId}`, {
       method: 'PATCH',
