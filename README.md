@@ -10,11 +10,12 @@ Built to answer strategic product questions, generate **Ship 30 for 30** long-fo
 ## Highlights & Key Capabilities
 
 - **100% Grounded in Lenny's Podcast Transcripts:** Ingests 700+ dialogue-aware semantic chunks across 15 iconic episodes (Elena Verna, Brian Balfour, Casey Winters, Sean Ellis, Shreyas Doshi, Gibson Biddle, etc.).
-- **Interactive Citations:** Every answer provides verifiable footnote sources with guest name, episode title, timestamp, and verbatim quotes.
+- **Interactive Citations with YouTube Deep-Linking:** Every answer provides verifiable footnote sources with guest name, episode title, timestamp, verbatim quotes, and direct timestamp-linked YouTube URLs (`&t=...s`) that jump to the exact moment in the interview.
+- **Strict 1-per-Guest Source Diversity:** Enforces multi-perspective synthesis across different podcast episodes and distinct YouTube videos without repeating the same guest or video.
 - **Out-of-Domain Guardrail:** Rejects questions unrelated to Product Management / Growth with an explicit refusal, preventing hallucinations.
 - **Dual Model Runtime (Local + Cloud):** Seamless runtime toggle between **Local Ollama** (`llama3:latest` default) and Cloud providers (**Anthropic Claude** / **OpenAI**), with zero-failure fallback.
 - **Ship 30 for 30 Essay Skill:** Encodes the 1-3-1 hook rule, high-contrast subheadings, and actionable practitioner takeaways in ~1,250 words.
-- **Native In-App Artifact Viewer:** Renders interactive HTML/CSS checklists and frameworks beside the chat in a sandboxed `iframe` (`sandbox="allow-forms"`, `referrerPolicy="no-referrer"`) — JS execution is blocked; interactive inputs and checkboxes work.
+- **Native In-App Artifact Viewer with Dual-View & Theming:** Renders interactive HTML/CSS checklists and frameworks beside the chat with segmented `[ Preview | HTML ]` tabs, code copy button, light/dark mode iframe stylesheet injection, and interactive self-audit checklists.
 - **PostgreSQL & SQLite Persistence:** Multi-session conversation management with independent context isolation.
 - **One-Command Deployment:** Packaged with `docker-compose.yml` for instant zero-friction startup.
 

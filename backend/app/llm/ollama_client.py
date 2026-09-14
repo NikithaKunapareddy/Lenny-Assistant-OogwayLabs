@@ -6,16 +6,18 @@ from app.core.config import settings
 
 class OllamaClient(BaseLLM):
     def __init__(self, base_url: Optional[str] = None, model: Optional[str] = None):
-        self.base_url = (base_url or settings.OLLAMA_BASE_URL).rstrip("/")
+        url = (base_url or settings.OLLAMA_BASE_URL).rstrip("/")
+        if "localhost" in url:
+            url = url.replace("localhost", "127.0.0.1")
+        self.base_url = url
         self.model = model or settings.OLLAMA_MODEL
 
     def is_available(self) -> bool:
         try:
-            resp = requests.get(f"{self.base_url}/api/tags", timeout=3)
+            resp = requests.get(f"{self.base_url}/api/tags", timeout=0.8)
             if resp.status_code == 200:
                 data = resp.json()
                 models = [m.get("name") for m in data.get("models", [])]
-                # Check if configured model or any model is available
                 return len(models) > 0
             return False
         except Exception:

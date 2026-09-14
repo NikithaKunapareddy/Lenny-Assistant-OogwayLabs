@@ -14,12 +14,19 @@ class QnASkill:
         conversation_history: Optional[List[Dict[str, str]]] = None,
         guest_filter: Optional[str] = None
     ) -> Dict[str, Any]:
-        # If the query is vague (short, no domain keywords), enrich it with
-        # context from the last substantive exchange to handle follow-up questions
+        # Only enrich if the query is a genuine pronoun/follow-up question (e.g., "tell me more", "how does it work?", "why?")
+        # Never enrich self-contained questions that already have their own domain keywords
+        is_followup = any(query.lower().strip().startswith(prefix) for prefix in ["why", "how so", "tell me more", "elaborate", "what about", "and what", "can you explain"])
+        has_domain_topic = any(kw in query.lower() for kw in [
+            "onboarding", "retention", "activation", "strategy", "pricing", "icp",
+            "customer", "growth", "roadmap", "churn", "plg", "pmf", "loop", "funnel",
+            "first mile", "pilot", "metric", "framework"
+        ])
+
         enriched_query = query
-        if conversation_history and len(query.split()) < 12:
+        if conversation_history and is_followup and not has_domain_topic:
             for m in reversed(conversation_history):
-                if m["role"] == "user" and len(m["content"].split()) > 5:
+                if m["role"] == "user" and len(m["content"].split()) > 3:
                     enriched_query = f"{m['content']} {query}"
                     break
 
@@ -62,7 +69,7 @@ class QnASkill:
         response_text = llm.generate(
             prompt=prompt,
             system_prompt=GROUNDED_QNA_SYSTEM_PROMPT,
-            max_tokens=600
+            max_tokens=550
         )
 
         return {

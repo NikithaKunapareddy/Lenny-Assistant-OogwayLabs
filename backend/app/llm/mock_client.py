@@ -54,9 +54,41 @@ class MockGroundedClient(BaseLLM):
             time.sleep(0.008)
             yield chunk
 
+    def _extract_user_query(self, prompt: str) -> str:
+        # Match "User Question: <query>" or "Topic / Prompt: <query>"
+        m = re.search(r'(?:User Question|Topic / Prompt):\s*(.+?)(?:\n\n|\n[A-Z]|$)', prompt, re.DOTALL | re.IGNORECASE)
+        if m:
+            return m.group(1).strip()
+        lines = [line.strip() for line in prompt.strip().split('\n') if line.strip()]
+        for line in reversed(lines):
+            if not any(line.startswith(pfx) for pfx in ["[Source", "Guest:", "Episode:", "Timestamp:", "Dialogue:", "Assignment:", "Recent Conversation"]):
+                return line
+        return prompt
+
     def _generate_grounded_qna(self, prompt: str) -> str:
-        p_lower = prompt.lower()
-        if any(term in p_lower for term in ["strategy", "ravi mehta", "product strategy", "stack", "roadmap"]):
+        query = self._extract_user_query(prompt).lower()
+
+        # 1. Onboarding & First Mile
+        if any(term in query for term in ["onboarding", "first mile", "activation", "aha moment", "sign-up", "signup"]):
+            return (
+                "Based on conversations from Lenny's Podcast—especially with **Adam Fishman** (Lyft, Patreon) and **Scott Belsky** (Chief Strategy Officer at Adobe)—here is what drives a world-class onboarding experience:\n\n"
+                "### 1. Optimize the 'First Mile' (The First 30 Seconds)\n"
+                "As **Scott Belsky** points out, users are extremely impatient in their first interaction. Within the first 30 seconds, they must immediately understand:\n"
+                "- *Why am I here?*\n"
+                "- *What can I accomplish right now?*\n"
+                "- *What do I do next?*\n"
+                "If you overwhelm new sign-ups with multi-step setup tours, permissions, or empty state dashboards, up to 70% of potential users bounce permanently.\n\n"
+                "### 2. Time-to-Aha vs. Setup Burden\n"
+                "**Adam Fishman** emphasizes that onboarding is not a series of form fields; it is the shortest possible path to the core emotional payoff (the 'Aha!' moment):\n"
+                "- **Delay configuration:** Let users play with pre-populated templates before asking them to invite teammates or configure settings.\n"
+                "- **Segment by intent:** Tailor the onboarding flow based on why the user signed up (e.g., individual exploration vs. team deployment).\n\n"
+                "### 3. Track Activation, Not Just Sign-ups\n"
+                "As **Elena Verna** notes, high onboarding drop-off (Day 1 - Day 7) is usually mistaken for marketing churn. Top teams define an unambiguous Activation Metric (like creating their first shared canvas or sending 10 messages) and orient all onboarding experiments around hitting that threshold on Day 1.\n\n"
+                "> *\"More than 70% of total product churn occurs during onboarding. If a user does not hit their activation milestone within their first session, their probability of returning drops by half each subsequent day.\"* — **Adam Fishman**\n"
+            )
+
+        # 2. Product Strategy & Roadmap
+        elif any(term in query for term in ["strategy", "ravi mehta", "product strategy", "stack", "roadmap"]):
             return (
                 "Based on discussions from Lenny's Podcast—specifically with **Ravi Mehta** (former CPO of Tinder, VP of Product at Tripadvisor, and Product Director at Facebook)—here is the foundational framework for building a successful product strategy:\n\n"
                 "### 1. The Core Insight: Roadmaps are Not Strategy\n"
@@ -74,7 +106,9 @@ class MockGroundedClient(BaseLLM):
                 "- High-performing teams ensure every engineer and designer can trace their current sprint ticket back up to the top of the Product Strategy Stack.\n\n"
                 "> *\"The goal of the Product Strategy Stack is to help teams take a set of terms that are normally confused—mission, vision, strategy, roadmap—and organize them into a cohesive, actionable hierarchy.\"* — **Ravi Mehta**\n"
             )
-        elif any(term in p_lower for term in ["customer", "icp", "ideal customer", "segmentation", "persona"]):
+
+        # 3. Ideal Customer Profile (ICP)
+        elif any(term in query for term in ["customer", "icp", "ideal customer", "segmentation", "persona"]):
             return (
                 "Based on Lenny's Podcast interviews with growth leaders like **Elena Verna** (Amplitude, Miro) and **Hila Qu** (GitLab, Acorns), here is how startups should identify their Ideal Customer Profile (ICP):\n\n"
                 "### 1. Identify Your 'Super-Users' (Not Average Users)\n"
@@ -90,6 +124,23 @@ class MockGroundedClient(BaseLLM):
                 "### 3. Validate Channel-Model-Customer Alignment\n"
                 "As **Brian Balfour** explains in the Four Fits Framework, your ideal customer dictates your acquisition channel. If your ICP consists of individual developers, a self-serve product-led growth (PLG) motion is mandatory; enterprise buyers require sales-assisted distribution.\n"
             )
+
+        # 4. Pricing & Monetization
+        elif any(term in query for term in ["pricing", "price", "monetization", "monetize", "packaging"]):
+            return (
+                "Based on Lenny's Podcast interviews with pricing authority **Madhavan Ramanujam** (Monetizing Innovation, Simon-Kucher), here is how leading companies approach pricing and packaging:\n\n"
+                "### 1. Design the Product Around the Price (Not Vice-Versa)\n"
+                "As **Madhavan Ramanujam** stresses, the fatal error startups make is building a product first, and only trying to 'figure out pricing' at launch. Willingness to pay must be tested before writing code.\n\n"
+                "### 2. The 4 Fatal Pricing Traps\n"
+                "- **Feature Shock:** Cramming too many features into one bloated SKU that nobody wants to pay premium for.\n"
+                "- **Minivation:** Underpricing an innovative breakthrough product out of fear.\n"
+                "- **Hidden Gems:** Leaving your highest-value capability buried in a free tier.\n"
+                "- **Undead Products:** Building products that satisfy an edge need but generate zero willingness to pay.\n\n"
+                "### 3. Choose the Right Value Metric\n"
+                "Price should scale with the customer's perceived value (e.g., active users, messages sent, or revenue processed) rather than flat seat-based limits."
+            )
+
+        # 5. Default: Retention Architecture & Four Fits
         else:
             return (
                 "Based on discussions from Lenny's Podcast, here are the foundational insights from product and growth leaders:\n\n"
@@ -112,8 +163,10 @@ class MockGroundedClient(BaseLLM):
             )
 
     def _generate_ship30_essay(self, prompt: str) -> str:
-        p_lower = prompt.lower()
-        if any(term in p_lower for term in ["strategy", "ravi mehta", "product strategy", "stack", "vision"]):
+        query = self._extract_user_query(prompt).lower()
+        if any(term in query for term in ["retention", "churn", "leaky bucket", "habit loop"]):
+            return self._generate_retention_essay(prompt)
+        elif any(term in query for term in ["strategy", "ravi mehta", "product strategy", "stack", "roadmap"]):
             return self._generate_strategy_essay(prompt)
         else:
             return self._generate_retention_essay(prompt)
