@@ -109,15 +109,6 @@ export default function ChatArea({
       <header className="topbar">
         {/* Left: 3-lines menu + session title */}
         <div className="topbar__left" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Mobile sidebar button (mobile only) */}
-          <button
-            className="icon-btn mobile-menu-btn"
-            onClick={onToggleSidebar}
-            aria-label="Open sidebar"
-          >
-            <Menu size={18} />
-          </button>
-
           {/* 3-lines Hamburger button for Chat Actions */}
           <div style={{ position: 'relative' }} ref={ctxRef}>
             <button
