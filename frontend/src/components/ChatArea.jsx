@@ -104,10 +104,10 @@ export default function ChatArea({
   const activeModel = MODEL_META[modelInfo?.active_provider];
 
   return (
-    <main className="chat-area">
-      {/* ── Header ── */}
-      <header className="chat-header">
-        <div className="chat-header__left">
+    <div className="main">
+      {/* ── Topbar ── */}
+      <header className="topbar">
+        <div className="topbar__left">
           <button
             className="icon-btn mobile-menu-btn"
             onClick={onToggleSidebar}
@@ -116,12 +116,16 @@ export default function ChatArea({
             <Menu size={18} />
           </button>
           <div>
-            <div className="chat-header__title">{session?.title || 'New Strategy Chat'}</div>
-            <div className="chat-header__sub">Grounded in 700+ dialogue chunks · Lenny's Podcast</div>
+            <div className="chat-header__title" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>
+              {session?.title || 'New Strategy Chat'}
+            </div>
+            <div className="chat-header__sub" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              Grounded in 700+ dialogue chunks · Lenny's Podcast
+            </div>
           </div>
         </div>
 
-        <div className="chat-header__actions">
+        <div className="topbar__actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {/* Theme toggle */}
           <button
             className="icon-btn"
