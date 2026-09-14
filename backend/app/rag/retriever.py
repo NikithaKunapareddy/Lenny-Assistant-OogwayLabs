@@ -14,8 +14,10 @@ DOMAIN_KEYWORDS = {
     "growth", "product", "retention", "activation", "pmf", "churn", "pricing",
     "onboarding", "metric", "saas", "customer", "customers", "team", "engineer", "designer",
     "roadmap", "user", "reforge", "funnel", "loop", "experiment", "b2b", "plg",
-    "interview", "podcast", "lenny", "monetization", "acquisition", "distribution",
+    "interview", "interviews", "podcast", "lenny", "monetization", "acquisition", "distribution",
     "strategy", "culture", "leadership", "feedback", "okr", "market", "hiring",
+    "marketplace", "liquidity", "discovery", "prioritization", "design", "north", "star",
+    "cac", "ltv", "margin", "dhm", "lno", "survey", "disappointed",
     "amplitude", "miro", "dropbox", "figma", "pinterest", "netflix", "slack", "stripe",
     "startup", "startups", "founder", "founders", "icp", "ideal", "persona", "segmentation",
     "sales", "gtm", "audience", "positioning", "scale", "launch", "mvp", "validation"
@@ -27,6 +29,8 @@ class LennyRetriever:
         self.index_path = index_path
         self.chunks: List[Dict[str, Any]] = []
         self.chunks_by_id: Dict[str, Dict[str, Any]] = {}
+        self.all_guests: set = set()
+        self.guest_last_names: set = set()
         self.vectorizer = None
         self.tfidf_matrix = None
         self.chunk_ids: List[str] = []
@@ -41,6 +45,8 @@ class LennyRetriever:
         with open(self.kb_path, "r", encoding="utf-8") as f:
             self.chunks = json.load(f)
             self.chunks_by_id = {c["id"]: c for c in self.chunks}
+            self.all_guests = {c["guest"].lower() for c in self.chunks if c.get("guest")}
+            self.guest_last_names = {g.split()[-1] for g in self.all_guests if len(g.split()) > 1}
 
         with open(self.index_path, "rb") as f:
             idx = pickle.load(f)
@@ -75,7 +81,7 @@ class LennyRetriever:
 
         # Check domain relevance: does query contain at least one PM/growth term or known guest name?
         has_domain_term = bool(query_words.intersection(DOMAIN_KEYWORDS))
-        has_guest_name = any(c["guest"].lower() in query_lower for c in self.chunks[:50])
+        has_guest_name = any(g in query_lower for g in self.all_guests) or any(ln in query_words for ln in self.guest_last_names)
 
         # Vector search
         q_vec = self.vectorizer.transform([query])
@@ -142,8 +148,10 @@ class LennyRetriever:
                     boost += 0.06
                     break
 
-            if chunk["guest"].lower() in query_lower:
-                boost += 0.08
+            # Boost if chunk guest directly matches query
+            chunk_guest_lower = chunk["guest"].lower()
+            if chunk_guest_lower in query_lower or (len(chunk_guest_lower.split()) > 1 and chunk_guest_lower.split()[-1] in query_words):
+                boost += 0.12
 
             total_score = base_score + boost
 

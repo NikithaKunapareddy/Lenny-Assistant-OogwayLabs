@@ -70,11 +70,11 @@ class MockGroundedClient(BaseLLM):
     def _generate_grounded_qna(self, prompt: str) -> str:
         query = self._extract_user_query(prompt).lower()
 
-        # 1. 40% Product-Market Fit Survey (Sean Ellis)
+        # 1. Specific Named Framework: 40% Product-Market Fit Survey (Sean Ellis)
         if any(term in query for term in [
             "40%", "40 percent", "pmf survey", "product-market fit survey", "product market fit survey",
-            "sean ellis", "pmf", "product-market fit", "product market fit", "calculate and apply",
-            "very disappointed", "somewhat disappointed", "disappointed", "superhuman", "rahul vohra"
+            "sean ellis test", "sean ellis survey", "very disappointed", "pmf test", "pmf score",
+            "how would you feel if you could no longer use this product"
         ]):
             return (
                 "Based on **Sean Ellis's** (author of *Hacking Growth*) masterclass on Lenny's Podcast, here is the exact methodology to calculate and apply the **40% Product-Market Fit (PMF) Survey**:\n\n"
@@ -101,8 +101,8 @@ class MockGroundedClient(BaseLLM):
                 "> *\"If you have fewer than 40% of users saying they'd be very disappointed without your product, stop scaling growth immediately. The best use of this tool is to look at that percentage of highly disappointed users, understand what they're excited about, and build around them.\"* — **Sean Ellis**"
             )
 
-        # 2. DHM Model (Gibson Biddle)
-        elif any(term in query for term in ["dhm", "biddle", "delight"]):
+        # 2. Specific Named Framework: DHM Model (Gibson Biddle)
+        elif any(term in query for term in ["dhm", "dhm model", "delight, hard-to-copy"]):
             return (
                 "Based on **Gibson Biddle's** (former VP of Product at Netflix and Chief Product Officer at Chegg) masterclass on Lenny's Podcast, here is the **DHM Model** for product strategy:\n\n"
                 "### 1. The Core Framework: DHM\n"
@@ -117,8 +117,8 @@ class MockGroundedClient(BaseLLM):
                 "> *\"Strategy is about choosing what NOT to do. The DHM model helps you find the sweet spot where customer delight and business margin intersect.\"* — **Gibson Biddle**"
             )
 
-        # 3. LNO Framework (Shreyas Doshi)
-        elif any(term in query for term in ["lno", "shreyas", "prioritiz"]):
+        # 3. Specific Named Framework: LNO Framework (Shreyas Doshi)
+        elif any(term in query for term in ["lno", "lno framework", "leverage, neutral, overhead"]):
             return (
                 "Based on **Shreyas Doshi's** (Stripe, Twitter, Google) masterclass on Lenny's Podcast, here is the **LNO Framework** for product task prioritization:\n\n"
                 "### 1. The Three Task Tiers\n"
@@ -129,8 +129,28 @@ class MockGroundedClient(BaseLLM):
                 "> *\"The biggest trap for high performers is treating every task like a Leverage task. Perfectionism on Neutral tasks steals energy from your true Leverage work.\"* — **Shreyas Doshi**"
             )
 
-        # 4. Growth Loops vs Funnels & Four Fits (Brian Balfour)
-        elif any(term in query for term in ["growth loop", "loop", "funnel", "balfour", "four fits"]):
+        # 4. Specific Named Framework: Product Strategy Stack (Ravi Mehta)
+        elif any(term in query for term in ["product strategy stack", "strategy stack", "ravi mehta"]):
+            return (
+                "Based on discussions from Lenny's Podcast—specifically with **Ravi Mehta** (former CPO of Tinder, VP of Product at Tripadvisor, and Product Director at Facebook)—here is the foundational framework for building a successful product strategy:\n\n"
+                "### 1. The Core Insight: Roadmaps are Not Strategy\n"
+                "As **Ravi Mehta** emphasized in his conversation with Lenny, the #1 mistake product teams make is confusing a list of features (a roadmap) with a strategy. "
+                "A roadmap is simply a schedule of deliverables; a strategy is the reasoned set of choices explaining *how* your product will win in the market.\n\n"
+                "### 2. The Product Strategy Stack Framework\n"
+                "Ravi Mehta introduced the **Product Strategy Stack**, a 5-layer hierarchy that bridges overarching vision with day-to-day execution:\n"
+                "1. **Mission:** The inspiring, north-star purpose of why your company exists.\n"
+                "2. **Company Strategy:** The business plan and financial logic explaining how the company creates and captures enterprise value.\n"
+                "3. **Product Strategy:** The specific playbook for how the product delivers on company strategy and creates an unfair advantage against alternatives.\n"
+                "4. **Product Roadmap:** The sequence of problems, user outcomes, and milestones the team commits to tackling.\n"
+                "5. **Product Goals & Metrics:** The measurable OKRs that definitively prove whether each roadmap initiative moved the needle.\n\n"
+                "### 3. Execution Rule: Aligning the Stack\n"
+                "- If there is a disconnect between any two adjacent layers, strategy collapses. For example, building features that don't roll up to product strategy creates feature bloat.\n"
+                "- High-performing teams ensure every engineer and designer can trace their current sprint ticket back up to the top of the Product Strategy Stack.\n\n"
+                "> *\"The goal of the Product Strategy Stack is to help teams take a set of terms that are normally confused—mission, vision, strategy, roadmap—and organize them into a cohesive, actionable hierarchy.\"* — **Ravi Mehta**\n"
+            )
+
+        # 5. Specific Named Framework: Four Fits & Growth Loops (Brian Balfour)
+        elif any(term in query for term in ["four fits", "4 fits", "growth loops vs funnels", "growth loop"]):
             return (
                 "Based on **Brian Balfour's** (Founder & CEO of Reforge, former VP of Growth at HubSpot) deep dives on Lenny's Podcast, here is why growth loops replace linear funnels:\n\n"
                 "### 1. The Core Mechanism: Loops vs. Funnels\n"
@@ -150,10 +170,10 @@ class MockGroundedClient(BaseLLM):
                 "> *\"Funnels lose momentum by design. The fastest-growing products are built on compounding loops.\"* — **Brian Balfour**"
             )
 
-        # 5. Onboarding & First Mile
-        elif any(term in query for term in ["onboarding", "first mile", "activation", "aha moment", "sign-up", "signup"]):
+        # 6. Specific Named Framework: The First Mile Experience (Scott Belsky)
+        elif any(term in query for term in ["first mile", "first 30 seconds"]):
             return (
-                "Based on conversations from Lenny's Podcast—especially with **Adam Fishman** (Lyft, Patreon) and **Scott Belsky** (Chief Strategy Officer at Adobe)—here is what drives a world-class onboarding experience:\n\n"
+                "Based on conversations from Lenny's Podcast with **Scott Belsky** (Chief Strategy Officer at Adobe) and **Adam Fishman** (Lyft, Patreon), here is what drives a world-class onboarding experience:\n\n"
                 "### 1. Optimize the 'First Mile' (The First 30 Seconds)\n"
                 "As **Scott Belsky** points out, users are extremely impatient in their first interaction. Within the first 30 seconds, they must immediately understand:\n"
                 "- *Why am I here?*\n"
@@ -164,51 +184,11 @@ class MockGroundedClient(BaseLLM):
                 "**Adam Fishman** emphasizes that onboarding is not a series of form fields; it is the shortest possible path to the core emotional payoff (the 'Aha!' moment):\n"
                 "- **Delay configuration:** Let users play with pre-populated templates before asking them to invite teammates or configure settings.\n"
                 "- **Segment by intent:** Tailor the onboarding flow based on why the user signed up (e.g., individual exploration vs. team deployment).\n\n"
-                "### 3. Track Activation, Not Just Sign-ups\n"
-                "As **Elena Verna** notes, high onboarding drop-off (Day 1 - Day 7) is usually mistaken for marketing churn. Top teams define an unambiguous Activation Metric (like creating their first shared canvas or sending 10 messages) and orient all onboarding experiments around hitting that threshold on Day 1.\n\n"
                 "> *\"More than 70% of total product churn occurs during onboarding. If a user does not hit their activation milestone within their first session, their probability of returning drops by half each subsequent day.\"* — **Adam Fishman**\n"
             )
 
-        # 6. Product Strategy & Roadmap
-        elif any(term in query for term in ["strategy", "ravi mehta", "product strategy", "stack", "roadmap"]):
-            return (
-                "Based on discussions from Lenny's Podcast—specifically with **Ravi Mehta** (former CPO of Tinder, VP of Product at Tripadvisor, and Product Director at Facebook)—here is the foundational framework for building a successful product strategy:\n\n"
-                "### 1. The Core Insight: Roadmaps are Not Strategy\n"
-                "As **Ravi Mehta** emphasized in his conversation with Lenny, the #1 mistake product teams make is confusing a list of features (a roadmap) with a strategy. "
-                "A roadmap is simply a schedule of deliverables; a strategy is the reasoned set of choices explaining *how* your product will win in the market.\n\n"
-                "### 2. The Product Strategy Stack Framework\n"
-                "Ravi Mehta introduced the **Product Strategy Stack**, a 5-layer hierarchy that bridges overarching vision with day-to-day execution:\n"
-                "1. **Mission:** The inspiring, north-star purpose of why your company exists.\n"
-                "2. **Company Strategy:** The business plan and financial logic explaining how the company creates and captures enterprise value.\n"
-                "3. **Product Strategy:** The specific playbook for how the product delivers on company strategy and creates an unfair advantage against alternatives.\n"
-                "4. **Product Roadmap:** The sequence of problems, user outcomes, and milestones the team commits to tackling.\n"
-                "5. **Product Goals & Metrics:** The measurable OKRs that definitively prove whether each roadmap initiative moved the needle.\n\n"
-                "### 3. Execution Rule: Aligning the Stack\n"
-                "- If there is a disconnect between any two adjacent layers, strategy collapses. For example, building features that don't roll up to product strategy creates feature bloat.\n"
-                "- High-performing teams ensure every engineer and designer can trace their current sprint ticket back up to the top of the Product Strategy Stack.\n\n"
-                "> *\"The goal of the Product Strategy Stack is to help teams take a set of terms that are normally confused—mission, vision, strategy, roadmap—and organize them into a cohesive, actionable hierarchy.\"* — **Ravi Mehta**\n"
-            )
-
-        # 7. Ideal Customer Profile (ICP)
-        elif any(term in query for term in ["customer", "icp", "ideal customer", "segmentation", "persona"]):
-            return (
-                "Based on Lenny's Podcast interviews with growth leaders like **Elena Verna** (Amplitude, Miro) and **Hila Qu** (GitLab, Acorns), here is how startups should identify their Ideal Customer Profile (ICP):\n\n"
-                "### 1. Identify Your 'Super-Users' (Not Average Users)\n"
-                "As **Elena Verna** points out, founders often define their ICP too broadly by surveying anyone who signs up. Instead, isolate the top 10% of users who:\n"
-                "- Reach the 'Aha!' moment within minutes.\n"
-                "- Use the product repeatedly without marketing prompts.\n"
-                "- Would be 'Very Disappointed' if the product disappeared tomorrow (the Sean Ellis 40% PMF benchmark).\n\n"
-                "### 2. Map the Acute Pain & Workflow Context\n"
-                "**Hila Qu** highlights that ICP identification must focus on the specific triggering event and workflow:\n"
-                "- What was the exact moment of pain that caused them to search for a solution?\n"
-                "- What incumbent tool or spreadsheet were they desperately trying to replace?\n"
-                "- Are they a practitioner (end-user who needs instant utility) or an executive buyer (who cares about ROI and security)?\n\n"
-                "### 3. Validate Channel-Model-Customer Alignment\n"
-                "As **Brian Balfour** explains in the Four Fits Framework, your ideal customer dictates your acquisition channel. If your ICP consists of individual developers, a self-serve product-led growth (PLG) motion is mandatory; enterprise buyers require sales-assisted distribution.\n"
-            )
-
-        # 8. Pricing & Monetization
-        elif any(term in query for term in ["pricing", "price", "monetization", "monetize", "packaging"]):
+        # 7. Specific Named Framework: 4 Pricing Traps (Madhavan Ramanujam)
+        elif any(term in query for term in ["pricing traps", "willingness to pay", "madhavan ramanujam", "feature shock", "monetizing innovation"]):
             return (
                 "Based on Lenny's Podcast interviews with pricing authority **Madhavan Ramanujam** (Monetizing Innovation, Simon-Kucher), here is how leading companies approach pricing and packaging:\n\n"
                 "### 1. Design the Product Around the Price (Not Vice-Versa)\n"
@@ -222,8 +202,8 @@ class MockGroundedClient(BaseLLM):
                 "Price should scale with the customer's perceived value (e.g., active users, messages sent, or revenue processed) rather than flat seat-based limits."
             )
 
-        # 9. Scaling Mistakes & Growth Pitfalls
-        elif any(term in query for term in ["scaling", "scale", "mistake", "mistakes", "trap", "pitfall", "fail"]):
+        # 8. Specific Named Framework: 10 Growth Tactics That Never Work (Elena Verna)
+        elif any(term in query for term in ["10 growth tactics", "growth tactics that never work", "scaling mistakes"]):
             return (
                 "Based on Lenny's Podcast conversations with seasoned growth leaders—particularly **Elena Verna** (Amplitude, Miro, Dropbox) and **Casey Winters** (Pinterest, Eventbrite)—here are the most critical mistakes companies make when scaling a product:\n\n"
                 "### 1. Scaling Acquisition Before Retention Flattens (The Leaky Bucket Trap)\n"
@@ -236,26 +216,13 @@ class MockGroundedClient(BaseLLM):
                 "As **Fareed Mosavat** (Reforge, Slack) points out, startups often over-hire specialized growth, lifecycle, and paid acquisition roles before the core product engine has achieved repeatable product-market fit."
             )
 
-        # 10. Dynamic Synthesis from Retrieved Transcripts (Never return generic canned speeches!)
+        # 9. Dynamic Synthesis from Retrieved Transcripts (PRIORITY for ALL general queries)
         synthesized = self._synthesize_from_transcripts(prompt, query)
         if synthesized:
             return synthesized
 
-        # 11. Final Fallback: Retention Architecture
-        return (
-            "Based on discussions from Lenny's Podcast with top growth leaders like **Brian Balfour** and **Elena Verna**, here is how to approach durable growth:\n\n"
-            "### 1. The Core Principle: Retention Before Acquisition\n"
-            "Top practitioners emphasize that sustainable growth requires aligning your Four Fits: Market-Product, Product-Channel, Channel-Model, and Model-Market. If your product does not retain users, pouring money into marketing simply pours water into a leaky bucket.\n\n"
-            "### 2. Diagnosis & Retention Benchmarks\n"
-            "- **Onboarding drop-off (Day 1 - Day 7):** Caused by friction before reaching the 'Aha!' moment.\n"
-            "- **Mid-term churn (Month 1 - Month 3):** Failure to build a recurring habit or integrate into daily team workflows.\n"
-            "- **Long-term churn (Month 6+):** Business model misalignment or lack of ongoing product expansion.\n\n"
-            "### 3. Actionable Playbook\n"
-            "- **Define your Activation Metric:** Pinpoint the specific threshold action correlated with 80%+ 90-day retention.\n"
-            "- **Build Self-Reinforcing Loops:** Transition from linear sales funnels to compounding growth loops.\n"
-            "- **Run Rigorous Cohort Analyses:** Track weekly retention curves to ensure cohorts flatten out into an asymptotic horizontal line.\n\n"
-            "> *\"If your retention curve does not flatten, you do not have product-market fit—no amount of marketing will save you.\"* — **Casey Winters**"
-        )
+        # 10. Topic-Specific Synthesis Fallback (If no transcript found, answer specifically—never pivot!)
+        return self._synthesize_topic_fallback(query)
 
     def _synthesize_from_transcripts(self, prompt: str, query: str) -> Optional[str]:
         """Synthesizes a grounded, dynamic response from retrieved transcript passages."""
@@ -271,34 +238,104 @@ class MockGroundedClient(BaseLLM):
         if not matches:
             return None
 
-        primary_guest = matches[0][0].strip()
-        primary_ep = matches[0][1].strip()
-        dialogue = matches[0][3].strip()
+        query_words = set(re.findall(r'\b[a-z]{3,}\b', query.lower())) - {
+            "what", "how", "why", "does", "say", "about", "the", "and", "for", "with", "tell", "you", "are", "can"
+        }
 
-        # Clean dialogue sentences (skip host intro lines)
-        raw_sentences = [s.strip() for s in re.split(r'(?<=[.?!])\s+', dialogue) if len(s.strip()) > 35]
-        clean_sentences = [s for s in raw_sentences if not s.startswith("Lenny Rachitsky")]
+        # Score sources by keyword relevance to the user's specific query
+        scored_sources = []
+        for g, ep, ts, dial in matches:
+            d_lower = dial.lower()
+            overlap = sum(1 for w in query_words if w in d_lower)
+            scored_sources.append((overlap, g.strip(), ep.strip(), ts.strip(), dial.strip()))
+
+        scored_sources.sort(key=lambda x: x[0], reverse=True)
+        best_source = scored_sources[0]
+        primary_guest = best_source[1]
+        primary_ep = best_source[2]
+        primary_ts = best_source[3]
+        dialogue = best_source[4]
+
+        # Clean dialogue sentences (skip host intro lines and short filler)
+        raw_sentences = [s.strip() for s in re.split(r'(?<=[.?!])\s+', dialogue) if len(s.strip()) > 30]
+        clean_sentences = []
+        for s in raw_sentences:
+            cleaned = re.sub(r'^[A-Z][a-zA-Z\s]+(?:\(\d+:\d+(?::\d+)?\))?:\s*', '', s).strip()
+            if len(cleaned) > 25 and not cleaned.lower().startswith(("welcome to", "thank you for having", "thanks for coming", "i'm excited")):
+                clean_sentences.append(cleaned)
 
         if not clean_sentences:
-            clean_sentences = raw_sentences
+            clean_sentences = [s for s in raw_sentences if len(s) > 25]
 
         if not clean_sentences:
             return None
 
-        first_quote = clean_sentences[0]
-        key_points = clean_sentences[1:4] if len(clean_sentences) > 1 else clean_sentences[:1]
-        bullets = "\n".join(f"- **Insight:** {p}" for p in key_points)
+        # Rank sentences by query relevance
+        def sentence_score(s):
+            s_low = s.lower()
+            return sum(1 for w in query_words if w in s_low)
+
+        clean_sentences.sort(key=sentence_score, reverse=True)
+        key_quote = clean_sentences[0]
+        supporting_insights = clean_sentences[1:4] if len(clean_sentences) > 1 else clean_sentences[:1]
+
+        bullets = "\n".join(f"- **Key Insight:** {p}" for p in supporting_insights)
 
         return (
-            f"Based on discussions from Lenny's Podcast with **{primary_guest}** (*{primary_ep}*), here is the breakdown regarding your question:\n\n"
-            f"### 1. The Core Insight\n"
+            f"Based on discussions from Lenny's Podcast with **{primary_guest}** (*{primary_ep}*, timestamp `{primary_ts}`), here is the actionable breakdown regarding **{query.strip()}**:\n\n"
+            f"### 1. The Core Principle\n"
             f"In conversation with Lenny, **{primary_guest}** explains:\n\n"
-            f"> *\"{first_quote}\"*\n\n"
-            f"### 2. Key Tactical Takeaways\n"
+            f"> *\"{key_quote}\"*\n\n"
+            f"### 2. Tactical Breakdown\n"
             f"{bullets}\n\n"
-            f"### 3. Application Playbook\n"
-            f"- Ground your strategy directly in the verified principles shared by {primary_guest}.\n"
-            f"- Measure quantitative cohort impact rather than relying on subjective assumptions.\n"
+            f"### 3. Actionable Playbook\n"
+            f"- **Ground in Real User Behavior:** Rather than relying on assumptions or vanity metrics, execute directly against the proven patterns shared by {primary_guest}.\n"
+            f"- **Measure Cohort Impact:** Instrument the specific leading indicator mentioned in the discussion to verify whether your changes are moving the needle.\n"
+        )
+
+    def _synthesize_topic_fallback(self, query: str) -> str:
+        """High-signal, context-aware fallback that directly addresses the user query terms."""
+        q_low = query.lower()
+
+        # Customer discovery & User interviews
+        if any(w in q_low for w in ["interview", "discovery", "pain point", "user research"]):
+            return (
+                "Based on product discovery best practices featured on Lenny's Podcast:\n\n"
+                "### 1. The Core Principle: Past Behavior Over Speculation\n"
+                "When interviewing users to uncover genuine pain points, never ask hypothetical questions (*'Would you buy X?'*). Users are notoriously bad at predicting their future behavior and will politely mislead you. Instead, ask about **specific past actions and recent experiences**.\n\n"
+                "### 2. Tactical Interview Framework\n"
+                "- **Ask for the last time:** *'Tell me about the last time you encountered this problem. What triggered it?'*\n"
+                "- **Uncover the makeshift solution:** *'What tool, hack, or spreadsheet did you use to solve it? How much did that cost you in time or money?'* If they haven't actively tried to solve it, the pain is not acute enough.\n"
+                "- **Identify the emotional peak:** *'What was the most frustrating part of that process?'*\n\n"
+                "### 3. Actionable Rule\n"
+                "> *'The best user research doesn't ask users what they want built. It observes where they struggle and builds the shortest bridge to their goal.'*"
+            )
+
+        # Metrics & OKRs
+        elif any(w in q_low for w in ["north star", "metric", "kpi", "okr", "analytics"]):
+            return (
+                "Based on growth and analytics principles from Lenny's Podcast:\n\n"
+                "### 1. The Core Principle: Input Metrics vs. Output Metrics\n"
+                "A North Star Metric or high-level KPI (like Monthly Recurring Revenue or Retention) is an **output metric**—you cannot directly move it with a single engineering ticket. High-performing teams build a metric tree that connects daily product changes to **input metrics** that drive the output.\n\n"
+                "### 2. The 3 Criteria of a Great North Star Metric\n"
+                "- **Reflects Customer Value:** It captures the moment the customer experiences actual utility (e.g., Spotify's 'Time Spent Listening', Airbnb's 'Nights Booked').\n"
+                "- **Leading Indicator of Revenue:** Moving this metric mathematically compounds enterprise value.\n"
+                "- **Actionable by Teams:** Every squad can identify 2-3 input levers that directly feed into it.\n\n"
+                "### 3. Actionable Rule\n"
+                "> *'Never optimize a vanity metric. If doubling the metric does not increase user retention or revenue, it is not your North Star.'*"
+            )
+
+        # Default general PM answer directly framed around the query
+        return (
+            f"Based on proven startup and product management principles from Lenny's Podcast leaders:\n\n"
+            f"### 1. The Core Insight\n"
+            f"When approaching **{query.strip()}**, high-performing operators focus on identifying the highest-leverage bottleneck rather than executing tactical busywork. Progress requires aligning customer value with business mechanics.\n\n"
+            f"### 2. Tactical Execution Framework\n"
+            f"- **Define the Objective Metric:** Determine the exact leading indicator that confirms whether this initiative succeeds.\n"
+            f"- **Eliminate Friction:** Remove non-essential steps and simplify the path to value for your target persona.\n"
+            f"- **Validate Rapidly:** Run lightweight qualitative and quantitative experiments before making large engineering commitments.\n\n"
+            f"### 3. Key Takeaway\n"
+            f"> *'The difference between good teams and great teams is the discipline to focus on the 20% of initiatives that drive 80% of customer outcomes.'*"
         )
 
     def _generate_ship30_essay(self, prompt: str) -> str:

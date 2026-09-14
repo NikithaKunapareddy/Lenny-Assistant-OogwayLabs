@@ -30,15 +30,15 @@ class QnASkill:
                     enriched_query = f"{m['content']} {query}"
                     break
 
-        # Search knowledge base (top_k=2 with concise context for fast CPU inference)
-        search_res = retriever.search(enriched_query, top_k=2, threshold=self.threshold, guest_filter=guest_filter)
+        # Search knowledge base (top_k=3 with rich context for fast inference)
+        search_res = retriever.search(enriched_query, top_k=3, threshold=self.threshold, guest_filter=guest_filter)
 
         short_results = []
-        for r in search_res.get("results", [])[:2]:
+        for r in search_res.get("results", [])[:3]:
             r_copy = dict(r)
             words = r_copy.get("content", "").split()
-            if len(words) > 180:
-                r_copy["content"] = " ".join(words[:180]) + "..."
+            if len(words) > 320:
+                r_copy["content"] = " ".join(words[:320]) + "..."
             short_results.append(r_copy)
 
         history_str = ""
