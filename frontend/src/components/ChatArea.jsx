@@ -3,7 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import {
   Send, Menu, Layers, TrendingUp, BookOpen,
-  RefreshCw, CheckCircle2, Zap, ChevronDown
+  RefreshCw, CheckCircle2, Zap, ChevronDown, Sun, Moon
 } from 'lucide-react';
 import SourceCard from './SourceCard';
 import { MODEL_META } from './Sidebar';
@@ -18,7 +18,8 @@ const STARTER_CARDS = [
 export default function ChatArea({
   session, messages, isLoading, onSendMessage,
   onOpenArtifact, activeArtifact, onToggleSidebar,
-  modelInfo, onSwitchModel, onClearChat, onExportChat
+  modelInfo, onSwitchModel, onClearChat, onExportChat,
+  theme, onToggleTheme
 }) {
   const [input, setInput] = useState('');
   const [showCtx, setShowCtx] = useState(false);
@@ -169,6 +170,18 @@ export default function ChatArea({
               }}
             >
               <Layers size={13} /> View Artifact
+            </button>
+          )}
+
+          {onToggleTheme && (
+            <button
+              className="icon-btn"
+              onClick={onToggleTheme}
+              title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
+              aria-label="Toggle theme"
+              style={{ width: 34, height: 34, borderRadius: 8 }}
+            >
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
             </button>
           )}
         </div>
