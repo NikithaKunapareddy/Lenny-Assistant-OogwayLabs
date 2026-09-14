@@ -4,7 +4,7 @@ from app.agent.prompts import GROUNDED_QNA_SYSTEM_PROMPT
 from app.llm.base import BaseLLM
 
 class QnASkill:
-    def __init__(self, threshold: float = 0.085):
+    def __init__(self, threshold: float = 0.05):
         self.threshold = threshold
 
     def execute(
@@ -26,28 +26,13 @@ class QnASkill:
         # Search knowledge base (top_k=2 with concise context for fast CPU inference)
         search_res = retriever.search(enriched_query, top_k=2, threshold=self.threshold, guest_filter=guest_filter)
 
-        if not search_res["is_grounded"]:
-            return {
-                "content": (
-                    "I couldn't find sufficient information about this topic in the available Lenny's Podcast transcripts.\n\n"
-                    "My knowledge base contains transcripts from Lenny's interviews on Product Management, Growth Strategy, "
-                    "Retention, Activation, Product-Led Growth (PLG), Pricing, and Org design. "
-                    "Please try asking a question related to these growth and product topics!"
-                ),
-                "sources": [],
-                "is_grounded": False,
-                "skill": "qna"
-            }
-
         short_results = []
-        for r in search_res["results"][:2]:
+        for r in search_res.get("results", [])[:2]:
             r_copy = dict(r)
             words = r_copy.get("content", "").split()
             if len(words) > 180:
                 r_copy["content"] = " ".join(words[:180]) + "..."
             short_results.append(r_copy)
-
-        context_str = retriever.format_sources_for_prompt(short_results)
 
         history_str = ""
         if conversation_history:
@@ -56,12 +41,22 @@ class QnASkill:
                 formatted_history.append(f"{m['role'].capitalize()}: {m['content']}")
             history_str = "Recent Conversation History:\n" + "\n".join(formatted_history) + "\n\n"
 
+        if short_results:
+            context_str = retriever.format_sources_for_prompt(short_results)
+            context_block = (
+                f"Retrieved Transcript Passages from Lenny's Podcast:\n"
+                f"{context_str}\n\n"
+            )
+            instruction = "Provide a clear, actionable answer citing specific guests and their insights from the transcripts:"
+        else:
+            context_block = ""
+            instruction = "Provide a clear, high-signal, actionable answer based on proven startup, product management, and growth best practices:"
+
         prompt = (
             f"{history_str}"
-            f"Retrieved Transcript Passages from Lenny's Podcast:\n"
-            f"{context_str}\n\n"
+            f"{context_block}"
             f"User Question: {query}\n\n"
-            f"Provide a clear, grounded answer citing specific guests and their insights:"
+            f"{instruction}"
         )
 
         response_text = llm.generate(
@@ -72,7 +67,7 @@ class QnASkill:
 
         return {
             "content": response_text,
-            "sources": search_res["results"],
-            "is_grounded": True,
+            "sources": search_res.get("results", []),
+            "is_grounded": bool(search_res.get("results")),
             "skill": "qna"
         }
