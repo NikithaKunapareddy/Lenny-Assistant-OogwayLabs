@@ -107,7 +107,9 @@ export default function ChatArea({
     <div className="main">
       {/* ── Topbar ── */}
       <header className="topbar">
-        <div className="topbar__left">
+        {/* Left: 3-lines menu + session title */}
+        <div className="topbar__left" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Mobile sidebar button (mobile only) */}
           <button
             className="icon-btn mobile-menu-btn"
             onClick={onToggleSidebar}
@@ -115,28 +117,8 @@ export default function ChatArea({
           >
             <Menu size={18} />
           </button>
-          <div>
-            <div className="chat-header__title" style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>
-              {session?.title || 'New Strategy Chat'}
-            </div>
-            <div className="chat-header__sub" style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-              Grounded in 700+ dialogue chunks · Lenny's Podcast
-            </div>
-          </div>
-        </div>
 
-        <div className="topbar__actions" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {/* Theme toggle */}
-          <button
-            className="icon-btn"
-            onClick={onToggleTheme}
-            title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
-            aria-label="Toggle theme"
-          >
-            {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
-          </button>
-
-          {/* Context menu (hamburger) */}
+          {/* 3-lines Hamburger button for Chat Actions */}
           <div style={{ position: 'relative' }} ref={ctxRef}>
             <button
               className="icon-btn"
@@ -190,10 +172,18 @@ export default function ChatArea({
             )}
           </div>
 
-          <span className="topbar__title">{session?.title || 'Lenny Growth Assistant'}</span>
+          <div>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--text)' }}>
+              {session?.title || 'New Strategy Chat'}
+            </div>
+            <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+              Grounded in 700+ dialogue chunks · Lenny's Podcast
+            </div>
+          </div>
         </div>
 
-        <div className="topbar__right">
+        {/* Right: View Artifact (if active) + Moon/Sun button */}
+        <div className="topbar__right" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {activeArtifact && (
             <button
               onClick={() => onOpenArtifact(activeArtifact)}
@@ -217,9 +207,8 @@ export default function ChatArea({
               onClick={onToggleTheme}
               title={`Switch to ${theme === 'dark' ? 'light' : 'dark'} mode`}
               aria-label="Toggle theme"
-              style={{ width: 34, height: 34, borderRadius: 8 }}
             >
-              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              {theme === 'dark' ? <Sun size={17} /> : <Moon size={17} />}
             </button>
           )}
         </div>
