@@ -30,7 +30,7 @@ export default function SourceCard({ sources }) {
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{ color: 'var(--accent)', display: 'flex' }}
-                      title="Watch on YouTube"
+                      title={`Watch on YouTube at ${src.timestamp}`}
                     >
                       <ExternalLink size={12} />
                     </a>
